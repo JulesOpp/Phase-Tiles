@@ -82,7 +82,7 @@ def test_a_rebuild_renders_only_tiles_it_has_not_seen(window,
                                                       monkeypatch):
     from phasetiles import render
     from phasetilesapp import diagram_painter
-    diagram_painter._TILES.clear()    # windows share one store root
+    diagram_painter._TILES.clear()
     w = window()
     _tiny(w.doc)
     DiagramModel.build(w.doc)

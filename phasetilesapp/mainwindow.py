@@ -33,6 +33,11 @@ class MainWindow(QMainWindow):
         self.setup = SetupDock(self.doc, self)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea,
                            self.setup)
+        from phasetilesapp.domains_panel import DomainsPanel
+        self.domains = DomainsPanel(self.doc, self._make_domain_view,
+                                    self)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea,
+                           self.domains)
         self.running = False
         self.runner = None
         self.progress = QProgressBar()

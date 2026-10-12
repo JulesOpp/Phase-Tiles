@@ -54,9 +54,12 @@ def _no_modals(request, monkeypatch):
 
 
 @pytest.fixture
-def window(qtbot, tmp_path):
+def window(qtbot, tmp_path, monkeypatch):
     """A main window that is never drawn on screen and is deleted
-    when the test ends, with its settings in tmp_path."""
+    when the test ends, with its settings and result cache in
+    tmp_path: a shared cache would make "not computed yet" depend on
+    which tests ran first."""
+    monkeypatch.setenv("PHASETILES_APP_DATA", str(tmp_path / "data"))
     from PySide6.QtCore import QSettings, Qt
     QSettings.setPath(QSettings.Format.IniFormat,
                       QSettings.Scope.UserScope, str(tmp_path))
