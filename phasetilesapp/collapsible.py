@@ -48,18 +48,23 @@ class Section(QWidget):
         self.body.setVisible(on)
 
 
-def scrolling(widget):
-    """widget in a vertical-only scroll area, for a dock."""
+def scrolling(widget, min_width):
+    """widget in a scroll area, for a dock.
+
+    The dock may shrink to `min_width` and then scrolls sideways.
+    Letting the widest row set the minimum made the window 1334 wide
+    on Windows (larger controls), more than a 1366 laptop shows.
+    `full_width` is what shows every row; the window opens docks at
+    that width when the screen has room."""
     s = QScrollArea()
     s.setWidget(widget)
     s.setWidgetResizable(True)
     s.setFrameShape(QFrame.Shape.NoFrame)
     s.setHorizontalScrollBarPolicy(
-        Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-    # with no horizontal bar, the dock must be wide enough for the
-    # widest row plus the vertical bar, or that row is cut off
-    s.setMinimumWidth(widget.minimumSizeHint().width()
-                      + s.verticalScrollBar().sizeHint().width() + 2)
+        Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+    s.full_width = (widget.minimumSizeHint().width()
+                    + s.verticalScrollBar().sizeHint().width() + 2)
+    s.setMinimumWidth(min(min_width, s.full_width))
     return s
 
 

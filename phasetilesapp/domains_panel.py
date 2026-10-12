@@ -93,7 +93,7 @@ class DomainsPanel(QDockWidget):
                 lay.addWidget(view.widget(), 1)
             lay.addWidget(note)
             v.addWidget(sec, 0 if view is None else 1)
-        self.setWidget(scrolling(body))
+        self.setWidget(scrolling(body, 240))
         fixed_dock(self)
         doc.selectionChanged.connect(self.refresh)
         doc.tilesChanged.connect(self.refresh)

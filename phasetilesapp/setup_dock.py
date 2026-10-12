@@ -106,7 +106,7 @@ class SetupDock(QDockWidget):
         self.messages.setTextFormat(Qt.TextFormat.PlainText)
         v.addWidget(self.messages)
         v.addStretch(1)
-        self.setWidget(scrolling(body))
+        self.setWidget(scrolling(body, 300))
         fixed_dock(self)
         # wiring: each user edit -> one set_spec
         self.family.currentTextChanged.connect(self._fill_nets)

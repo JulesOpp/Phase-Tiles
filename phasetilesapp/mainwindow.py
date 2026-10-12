@@ -61,6 +61,15 @@ class MainWindow(QMainWindow):
         avail = self.screen().availableGeometry()
         self.resize(min(1240, avail.width() - 80),
                     min(860, avail.height() - 40))
+        # docks at full width if the diagram keeps its minimum
+        docks = (self.setup, self.domains)
+        full = [d.widget().full_width for d in docks]
+        room = self.width() - self.diagram.minimumWidth() - 24
+        if sum(full) > room:
+            k = max(room, 1) / sum(full)
+            full = [max(d.widget().minimumWidth(), int(f * k))
+                    for d, f in zip(docks, full, strict=True)]
+        self.resizeDocks(list(docks), full, Qt.Orientation.Horizontal)
         fr = self.frameGeometry()
         fr.moveCenter(avail.center())
         self.move(fr.topLeft())

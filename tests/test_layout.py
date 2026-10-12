@@ -46,13 +46,22 @@ def test_the_window_fits_the_screen(window):
     assert w.minimumSizeHint().height() <= 720
 
 
-def test_the_widest_setup_row_is_not_cut_off(window):
+def test_the_widest_setup_row_is_never_cut_off(window):
+    # a dock narrower than its widest row scrolls to it
+    from PySide6.QtCore import Qt
     w = window()
-    d = w.findChild(SetupDock)
-    area = d.widget()
-    assert area.minimumWidth() >= (
-        area.widget().minimumSizeHint().width()
-        + area.verticalScrollBar().sizeHint().width())
+    for cls in (SetupDock, DomainsPanel):
+        area = w.findChild(cls).widget()
+        assert (area.horizontalScrollBarPolicy()
+                == Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        assert area.full_width >= area.widget().minimumSizeHint().width()
+
+
+def test_the_minimum_width_does_not_follow_the_widest_row(window):
+    # Windows draws controls wider; its rows made the minimum 1334
+    w = window()
+    assert w.findChild(SetupDock).widget().minimumWidth() <= 300
+    assert w.findChild(DomainsPanel).widget().minimumWidth() <= 240
 
 
 
