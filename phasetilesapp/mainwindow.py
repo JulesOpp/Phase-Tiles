@@ -20,6 +20,9 @@ class MainWindow(QMainWindow):
         self.resize(1400, 860)
         self._build_actions()
         self._build_menus()
+        from phasetilesapp.diagram_view import DiagramView
+        self.diagram = DiagramView(self.doc)
+        self.setCentralWidget(self.diagram)
         self.doc.specChanged.connect(self._refresh)
         self.doc.modifiedChanged.connect(self._refresh)
         self._refresh()
