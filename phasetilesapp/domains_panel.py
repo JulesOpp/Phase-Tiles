@@ -25,7 +25,7 @@ class DomainView(QWidget):
         self.pos = np.zeros((0, 2))
         self.cols = []
         self.zoom = 1.0
-        self.setMinimumSize(220, 220)
+        self.setMinimumSize(200, 200)
 
     def widget(self):
         return self

@@ -55,12 +55,15 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(source_note)
 
     def _fit_screen(self):
-        """1400 x 860 where it fits, else the available screen less a
-        margin: a fixed 860 put the status bar below a 13-inch
-        laptop's dock."""
+        """1240 x 860 where it fits, else the available screen less a
+        margin, centred: a fixed 860 put the status bar below a
+        13-inch laptop's dock, and 1400 wide ran off its right edge."""
         avail = self.screen().availableGeometry()
-        self.resize(min(1400, avail.width() - 40),
+        self.resize(min(1240, avail.width() - 80),
                     min(860, avail.height() - 40))
+        fr = self.frameGeometry()
+        fr.moveCenter(avail.center())
+        self.move(fr.topLeft())
 
     def _apply_rcsr_source(self):
         """Before the Document exists, so its net comes from the

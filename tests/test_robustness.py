@@ -88,3 +88,56 @@ def test_preferences_refuse_a_net_file_without_the_current_net(
     assert dlg.apply() is False
     assert "sql" in dlg.error.text()
     assert w.doc.net.name == "sql"              # still usable
+
+
+def _computed(w):
+    from phasetiles import runner
+    from phasetiles.spec import Axis, MCSettings
+    w.doc.set_spec(w.doc.spec.replace(
+        x=Axis("J1", -1, 1, 2.0), y=Axis("J2", 0, 0, 1.0),
+        mc=MCSettings(n=12, anneal=50, equil=50, snaps=1)), "tiny")
+    runner.run_tiles(w.doc.spec, w.doc.store, 1)
+    w.doc.notify_tiles()
+
+
+def test_clear_cache_removes_the_tiles_and_the_diagram_forgets_them(
+        window, monkeypatch):
+    from PySide6.QtWidgets import QMessageBox
+
+    from phasetilesapp.diagram_painter import DiagramModel
+    from phasetilesapp.preferences import PreferencesDialog
+    w = window()
+    _computed(w)
+    assert any(t.image is not None
+               for t in DiagramModel.build(w.doc).tiles)
+    dlg = PreferencesDialog(w.settings, w.doc, w)
+    assert "2 tiles" in dlg.cache_info.text()
+    monkeypatch.setattr(QMessageBox, "question", staticmethod(
+        lambda *a, **k: QMessageBox.StandardButton.Yes))
+    dlg.clear_cache.click()
+    assert w.doc.store.usage() == (0, 0)
+    assert "0 tiles" in dlg.cache_info.text()
+    assert all(t.image is None
+               for t in DiagramModel.build(w.doc).tiles)
+
+
+def test_clear_cache_keeps_the_tiles_when_the_user_says_no(
+        window, monkeypatch):
+    from PySide6.QtWidgets import QMessageBox
+
+    from phasetilesapp.preferences import PreferencesDialog
+    w = window()
+    _computed(w)
+    dlg = PreferencesDialog(w.settings, w.doc, w)
+    monkeypatch.setattr(QMessageBox, "question", staticmethod(
+        lambda *a, **k: QMessageBox.StandardButton.No))
+    dlg.clear_cache.click()
+    assert w.doc.store.usage()[0] == 2
+
+
+def test_clear_cache_is_disabled_during_a_run(window):
+    from phasetilesapp.preferences import PreferencesDialog
+    w = window()
+    w.running = True
+    dlg = PreferencesDialog(w.settings, w.doc, w)
+    assert not dlg.clear_cache.isEnabled()

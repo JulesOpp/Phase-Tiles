@@ -58,6 +58,12 @@ _TILES_MAX = 1024
 _SEGMENTS = {}
 
 
+def forget():
+    """Drop rendered tiles once the store is cleared: they are keyed
+    by store key, so they would outlive their files."""
+    _TILES.clear()
+
+
 def _remember(cache, key, value, cap):
     if len(cache) >= cap:
         cache.pop(next(iter(cache)))
@@ -151,22 +157,39 @@ class DiagramModel:
 
 
 class DiagramPainter:
-    """Two square-ish panels side by side, legend to the right of (b).
+    """Two panels, side by side or (a) above (b) -- whichever draws
+    them larger in the rect -- with the legend to the right of (b).
+    Side by side alone left a narrow window's panels thumbnail-sized.
     Margins in pixels; everything else scales with the rect."""
     LEFT, BOTTOM, TOP, GAP, LEGEND = 56, 44, 52, 48, 210
+    VGAP = BOTTOM + 30          # (a)'s axis labels + (b)'s title
 
-    def panels(self, rect, model):
-        w = rect.width() - self.LEFT * 2 - self.GAP - self.LEGEND
-        h = rect.height() - self.TOP - self.BOTTOM
+    def layout(self, rect, model, stacked):
         x0, x1, y0, y1 = model.bounds
-        # keep the BZ undistorted: pixel per y-unit = aspect * per x
-        kx = max(1e-6, min(w / 2 / (x1 - x0),
-                           h / ((y1 - y0) * model.aspect)))
-        pw, ph = kx * (x1 - x0), kx * model.aspect * (y1 - y0)
+        dx, dy = x1 - x0, (y1 - y0) * model.aspect
+        h = rect.height() - self.TOP - self.BOTTOM
+        if stacked:
+            w = rect.width() - self.LEFT - self.LEGEND - 8
+            # keep the BZ undistorted: pixel per y-unit = aspect * per x
+            kx = max(1e-6, min(w / dx, (h - self.VGAP) / 2 / dy))
+        else:
+            w = rect.width() - self.LEFT * 2 - self.GAP - self.LEGEND
+            kx = max(1e-6, min(w / 2 / dx, h / dy))
+        pw, ph = kx * dx, kx * dy
+        if stacked:
+            left = rect.left() + self.LEFT + max(0.0, (w - pw) / 2)
+            top = rect.top() + self.TOP + max(
+                0.0, (h - 2 * ph - self.VGAP) / 2)
+            a = QRectF(left, top, pw, ph)
+            return a, QRectF(left, a.bottom() + self.VGAP, pw, ph)
         top = rect.top() + self.TOP + (h - ph) / 2
         a = QRectF(rect.left() + self.LEFT, top, pw, ph)
-        b = QRectF(a.right() + self.GAP + self.LEFT, top, pw, ph)
-        return a, b
+        return a, QRectF(a.right() + self.GAP + self.LEFT, top, pw, ph)
+
+    def panels(self, rect, model):
+        side = self.layout(rect, model, False)
+        stack = self.layout(rect, model, True)
+        return stack if stack[0].width() > side[0].width() else side
 
     def to_widget(self, rect, model, panel, x, y):
         pa = self.panels(rect, model)[panel]

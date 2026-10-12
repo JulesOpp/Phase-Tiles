@@ -78,6 +78,31 @@ class ResultStore:
                             absm=r.absm, energy=r.energy)
         os.replace(tmp, f)     # never a half-written tile on a crash
 
+    def _tiles(self):
+        # only <mc_key>/<tile>.npz: the cache folder is a preference
+        # and may hold files the store did not write
+        if not self.root.is_dir():
+            return []
+        return [p for p in self.root.glob("*/*.npz") if p.is_file()]
+
+    def usage(self):
+        """(tile files, bytes) on disk."""
+        files = self._tiles()
+        return len(files), sum(p.stat().st_size for p in files)
+
+    def clear(self):
+        """Delete every stored tile; returns how many.  Saved .phtiles
+        projects carry their own tiles and are untouched."""
+        files = self._tiles()
+        for p in files:
+            p.unlink(missing_ok=True)
+        for d in {p.parent for p in files}:
+            try:
+                d.rmdir()           # only if nothing else is in it
+            except OSError:
+                pass
+        return len(files)
+
     def files_for(self, spec):
         d = self.root / spec.mc_key()
         if not d.exists():

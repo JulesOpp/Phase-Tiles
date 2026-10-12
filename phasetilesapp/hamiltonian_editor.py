@@ -85,7 +85,9 @@ class HamiltonianEditor(QWidget):
             row.value.setValue(fixed.get(sym, 0.0))
             row.value.setEnabled(sym in on and sym not in axes)
             if sym in axes:
-                row.info.setText(row.info.text() + " · " + axes[sym])
+                # own line: on one, these two rows set the dock's
+                # width and so the window's
+                row.info.setText(row.info.text() + "\n" + axes[sym])
             bc.unblock()
             bv.unblock()
         self.formula.setText(s.hamiltonian.formula())

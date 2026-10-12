@@ -54,3 +54,17 @@ def test_the_widest_setup_row_is_not_cut_off(window):
         area.widget().minimumSizeHint().width()
         + area.verticalScrollBar().sizeHint().width())
 
+
+
+def test_the_window_opens_narrower_than_a_13_inch_laptop(window):
+    # 1400 wide filled a 1512-point MacBook screen edge to edge
+    w = window()
+    assert w.width() <= 1240
+    assert w.minimumSizeHint().width() <= 1100
+
+
+def test_the_window_opens_on_screen(window):
+    w = window()
+    avail = w.screen().availableGeometry()
+    assert avail.contains(w.frameGeometry().topLeft())
+    assert w.frameGeometry().right() <= avail.right()

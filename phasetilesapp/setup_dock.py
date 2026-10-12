@@ -72,14 +72,15 @@ class SetupDock(QDockWidget):
                  self.x_step),
                 ("Y", self.y_sym, self.y_start, self.y_stop,
                  self.y_step)):
-            # symbol on its own line: one seven-widget row set the
-            # dock's minimum width, and so the window's
-            f.addRow(lab, sym)
-            row = QHBoxLayout()
-            for wdg in (QLabel("from"), a, QLabel("to"), b,
-                        QLabel("step"), c):
-                row.addWidget(wdg)
-            f.addRow("", row)
+            # two short rows: one seven-widget row set the dock's
+            # minimum width, and so the window's
+            top, rng = QHBoxLayout(), QHBoxLayout()
+            for wdg in (sym, QLabel("step"), c):
+                top.addWidget(wdg)
+            for wdg in (QLabel("from"), a, QLabel("to"), b):
+                rng.addWidget(wdg)
+            f.addRow(lab, top)
+            f.addRow("", rng)
         v.addWidget(gb)
         # MC
         gb = Section("Monte Carlo")
