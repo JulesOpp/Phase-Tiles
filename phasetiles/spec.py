@@ -27,6 +27,10 @@ class Axis:
     step: float
 
     def count(self):
+        """0 for a step <= 0 or a reversed range (validate() says why);
+        never a ZeroDivisionError from whoever asks first."""
+        if not self.step > 0 or self.stop < self.start:
+            return 0
         return int(np.floor((self.stop - self.start) / self.step
                             + 1e-6)) + 1
 

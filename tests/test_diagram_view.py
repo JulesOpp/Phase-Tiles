@@ -95,3 +95,64 @@ def test_a_rebuild_renders_only_tiles_it_has_not_seen(window,
     w.act_centre_half.trigger()          # display change: re-render
     DiagramModel.build(w.doc)
     assert len(calls) == 9
+
+
+def test_the_selected_tiles_phase_is_marked_in_the_legend(window):
+    w = window()
+    _tiny(w.doc)
+    m = DiagramModel.build(w.doc)
+    t = next(t for t in m.tiles if t.phase.label == "ferro (q = 0)")
+    painter = DiagramPainter()
+    assert painter.selected_label(m, t.centre) == "ferro (q = 0)"
+    assert painter.selected_label(m, None) is None
+
+    def legend_pixels(sel):
+        img = QImage(1400, 700, QImage.Format.Format_RGB32)
+        p = QPainter(img)
+        r = QRectF(0, 0, 1400, 700)
+        painter.paint(p, r, m, w.palette(), sel)
+        p.end()
+        b = painter.panels(r, m)[1]
+        return img.copy(int(b.right()) + 4, int(b.top()),
+                        int(painter.LEGEND) - 8, int(b.height()))
+    assert legend_pixels(t.centre) != legend_pixels(None)
+
+
+def test_a_tall_view_stacks_the_panels(window):
+    w = window()
+    m = DiagramModel.build(w.doc)
+    a, b = DiagramPainter().panels(QRectF(0, 0, 700, 900), m)
+    assert b.top() > a.bottom()
+    assert abs(a.left() - b.left()) < 1e-6
+
+
+def test_a_wide_view_puts_the_panels_side_by_side(window):
+    w = window()
+    m = DiagramModel.build(w.doc)
+    a, b = DiagramPainter().panels(QRectF(0, 0, 1600, 500), m)
+    assert b.left() > a.right()
+    assert abs(a.top() - b.top()) < 1e-6
+
+
+def test_the_layout_chosen_gives_the_larger_panels(window):
+    w = window()
+    m = DiagramModel.build(w.doc)
+    painter = DiagramPainter()
+    for r in (QRectF(0, 0, 700, 900), QRectF(0, 0, 1600, 500)):
+        a, _ = painter.panels(r, m)
+        assert a.width() >= max(painter.layout(r, m, s)[0].width()
+                                for s in (False, True)) - 1e-6
+
+
+def test_clicking_a_tile_in_the_lower_panel_selects_it(window, qtbot):
+    w = window()
+    _tiny(w.doc)
+    v = w.diagram
+    v.resize(600, 900)
+    m = v.model()
+    t = m.tiles[4]
+    pos = v.painter.to_widget(v.rect().toRectF(), m, 1, t.centre.x,
+                              t.centre.y)
+    assert pos.y() > v.painter.panels(v.rect().toRectF(), m)[0].bottom()
+    qtbot.mouseClick(v, Qt.MouseButton.LeftButton, pos=pos.toPoint())
+    assert w.doc.selected == t.centre

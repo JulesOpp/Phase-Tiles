@@ -58,6 +58,12 @@ _TILES_MAX = 1024
 _SEGMENTS = {}
 
 
+def forget():
+    """Drop rendered tiles once the store is cleared: they are keyed
+    by store key, so they would outlive their files."""
+    _TILES.clear()
+
+
 def _remember(cache, key, value, cap):
     if len(cache) >= cap:
         cache.pop(next(iter(cache)))
@@ -83,10 +89,19 @@ class DiagramModel:
     title: str
     xlabel: str
     ylabel: str
+    error: str | None = None     # why there are no tiles to draw
 
     @classmethod
     def build(cls, doc):
         s, net = doc.spec, doc.net
+        errors, _ = s.validate()
+        if errors:
+            # the same sentences that grey out Run: a step of 0 or a
+            # reversed range raised in every paintEvent, and an
+            # over-cap grid took seconds per repaint
+            return cls([], np.zeros((0, 2, 2)), None, [], {},
+                       (0.0, 1.0, 0.0, 1.0), 1.0, "", s.x.symbol,
+                       s.y.symbol, " ".join(errors))
         n = s.n_cells(net.nsub)
         B, poly = tiling.recip(net)
         mx, my = tiling.scale(B, s.x, s.y)
@@ -142,22 +157,39 @@ class DiagramModel:
 
 
 class DiagramPainter:
-    """Two square-ish panels side by side, legend to the right of (b).
+    """Two panels, side by side or (a) above (b) -- whichever draws
+    them larger in the rect -- with the legend to the right of (b).
+    Side by side alone left a narrow window's panels thumbnail-sized.
     Margins in pixels; everything else scales with the rect."""
     LEFT, BOTTOM, TOP, GAP, LEGEND = 56, 44, 52, 48, 210
+    VGAP = BOTTOM + 30          # (a)'s axis labels + (b)'s title
 
-    def panels(self, rect, model):
-        w = rect.width() - self.LEFT * 2 - self.GAP - self.LEGEND
-        h = rect.height() - self.TOP - self.BOTTOM
+    def layout(self, rect, model, stacked):
         x0, x1, y0, y1 = model.bounds
-        # keep the BZ undistorted: pixel per y-unit = aspect * per x
-        kx = max(1e-6, min(w / 2 / (x1 - x0),
-                           h / ((y1 - y0) * model.aspect)))
-        pw, ph = kx * (x1 - x0), kx * model.aspect * (y1 - y0)
+        dx, dy = x1 - x0, (y1 - y0) * model.aspect
+        h = rect.height() - self.TOP - self.BOTTOM
+        if stacked:
+            w = rect.width() - self.LEFT - self.LEGEND - 8
+            # keep the BZ undistorted: pixel per y-unit = aspect * per x
+            kx = max(1e-6, min(w / dx, (h - self.VGAP) / 2 / dy))
+        else:
+            w = rect.width() - self.LEFT * 2 - self.GAP - self.LEGEND
+            kx = max(1e-6, min(w / 2 / dx, h / dy))
+        pw, ph = kx * dx, kx * dy
+        if stacked:
+            left = rect.left() + self.LEFT + max(0.0, (w - pw) / 2)
+            top = rect.top() + self.TOP + max(
+                0.0, (h - 2 * ph - self.VGAP) / 2)
+            a = QRectF(left, top, pw, ph)
+            return a, QRectF(left, a.bottom() + self.VGAP, pw, ph)
         top = rect.top() + self.TOP + (h - ph) / 2
         a = QRectF(rect.left() + self.LEFT, top, pw, ph)
-        b = QRectF(a.right() + self.GAP + self.LEFT, top, pw, ph)
-        return a, b
+        return a, QRectF(a.right() + self.GAP + self.LEFT, top, pw, ph)
+
+    def panels(self, rect, model):
+        side = self.layout(rect, model, False)
+        stack = self.layout(rect, model, True)
+        return stack if stack[0].width() > side[0].width() else side
 
     def to_widget(self, rect, model, panel, x, y):
         pa = self.panels(rect, model)[panel]
@@ -183,6 +215,14 @@ class DiagramPainter:
         p.setRenderHint(p.RenderHint.Antialiasing)
         p.setRenderHint(p.RenderHint.SmoothPixmapTransform)
         fg = palette.windowText().color()
+        if model.error:
+            p.setPen(fg)
+            p.drawText(rect.adjusted(40, 40, -40, -40),
+                       Qt.AlignmentFlag.AlignCenter
+                       | Qt.TextFlag.TextWordWrap,
+                       "Nothing to draw: " + model.error)
+            p.restore()
+            return
         a, b = self.panels(rect, model)
         for panel, pr in ((0, a), (1, b)):
             p.save()
@@ -221,7 +261,9 @@ class DiagramPainter:
             p.restore()
             self._axes(p, rect, model, panel, pr, fg)
         self._titles(p, rect, model, a, b, fg)
-        self._legend(p, b, model, fg)
+        self._legend(p, b, model, fg,
+                     self.selected_label(model, selected),
+                     palette.highlight().color())
         p.restore()
 
     def _axes(self, p, rect, model, panel, pr, fg):
@@ -275,7 +317,16 @@ class DiagramPainter:
                        Qt.AlignmentFlag.AlignLeft, model.t0_note)
             p.restore()
 
-    def _legend(self, p, b, model, fg):
+    @staticmethod
+    def selected_label(model, selected):
+        """The phase of the selected tile, or None (nothing selected,
+        or the tile is not computed)."""
+        for t in model.tiles:
+            if t.centre == selected and t.phase is not None:
+                return t.phase.label
+        return None
+
+    def _legend(self, p, b, model, fg, marked=None, mark=None):
         fm = p.fontMetrics()
         x, y = b.right() + 16, b.top() + 2
         p.setPen(fg)
@@ -283,6 +334,13 @@ class DiagramPainter:
         y += fm.height() + 8
         sw = fm.height() - 2
         for label, colour, count in model.legend:
+            if label == marked:
+                # same colour as the tile's selection outline
+                p.setPen(QPen(mark, 2.0))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawRoundedRect(QRectF(x - 4, y - 3, self.LEGEND - 18,
+                                         sw + 6), 3, 3)
+                p.setPen(fg)
             p.fillRect(QRectF(x, y, sw, sw), QColor(colour))
             p.setPen(QPen(fg, 0.5))
             p.drawRect(QRectF(x, y, sw, sw))

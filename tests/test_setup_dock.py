@@ -54,10 +54,12 @@ def test_unticking_a_term_on_an_axis_is_refused_with_a_reason(window):
 
 def test_an_invalid_range_disables_run_and_says_why(window):
     w, d = _dock(window)
-    d.x_step.setValue(0.0)
-    d.x_step.editingFinished.emit()
+    # step 0 can no longer be typed (minimum 1e-4); a reversed range
+    # still can
+    d.x_start.setValue(2.0)
+    d.x_start.editingFinished.emit()
     assert not w.act_run.isEnabled()
-    assert "step must be > 0" in d.messages.text()
+    assert "is above stop" in d.messages.text()
 
 
 def test_typing_a_value_is_one_undo_step(window):

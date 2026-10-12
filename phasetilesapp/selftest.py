@@ -10,6 +10,7 @@ checks what breaks only in a bundle:
 3. QPainter + QImage + PNG plugin -- the export path.
 It never opens a dialog: a modal in CI is a hang, not a failure.
 """
+import shutil
 import sys
 import tempfile
 import traceback
@@ -17,6 +18,7 @@ from pathlib import Path
 
 
 def run_selftest(out=None):
+    tmp = None
     try:
         from PySide6.QtWidgets import QDialog, QMessageBox
 
@@ -47,7 +49,8 @@ def run_selftest(out=None):
             mc=MCSettings(n=12, anneal=50, equil=50, snaps=1))
         n = runner.run_tiles(fresh, ResultStore(tmp / "pool"), 2)
         assert n == 2, f"process pool computed {n} of 2 tiles"
-        out = Path(out or tmp / "selftest.png")
+        out = Path(out or Path(tempfile.gettempdir())
+                   / "phasetiles-selftest.png")
         export_image(doc, out, 1200, 600)
         assert out.exists() and out.stat().st_size > 10000, \
             "image missing or empty"
@@ -57,3 +60,7 @@ def run_selftest(out=None):
         traceback.print_exc()
         print("selftest FAILED", file=sys.stderr)
         return 1
+    finally:
+        # two cached tiles per run, forever, in the user's temp folder
+        if tmp is not None:
+            shutil.rmtree(tmp, ignore_errors=True)

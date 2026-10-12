@@ -1,6 +1,9 @@
 """The shell: menus, docks, status.  No physics here -- every action
 asks the Document or the core."""
 import dataclasses
+import sys
+import zipfile
+from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QActionGroup, QKeySequence
@@ -24,7 +27,6 @@ class MainWindow(QMainWindow):
             store_root=self.settings.cache_root)
         self._make_domain_view = make_domain_view
         self.setWindowTitle("Phase Tiles")
-        self.resize(1400, 860)
         self._build_actions()
         self._build_menus()
         from phasetilesapp.diagram_view import DiagramView
@@ -48,8 +50,29 @@ class MainWindow(QMainWindow):
         self.doc.specChanged.connect(self._refresh)
         self.doc.modifiedChanged.connect(self._refresh)
         self._refresh()
+        self._fit_screen()
         if source_note:
             self.statusBar().showMessage(source_note)
+
+    def _fit_screen(self):
+        """1240 x 860 where it fits, else the available screen less a
+        margin, centred: a fixed 860 put the status bar below a
+        13-inch laptop's dock, and 1400 wide ran off its right edge."""
+        avail = self.screen().availableGeometry()
+        self.resize(min(1240, avail.width() - 80),
+                    min(860, avail.height() - 40))
+        # docks at full width if the diagram keeps its minimum
+        docks = (self.setup, self.domains)
+        full = [d.widget().full_width for d in docks]
+        room = self.width() - self.diagram.minimumWidth() - 24
+        if sum(full) > room:
+            k = max(room, 1) / sum(full)
+            full = [max(d.widget().minimumWidth(), int(f * k))
+                    for d, f in zip(docks, full, strict=True)]
+        self.resizeDocks(list(docks), full, Qt.Orientation.Horizontal)
+        fr = self.frameGeometry()
+        fr.moveCenter(avail.center())
+        self.move(fr.topLeft())
 
     def _apply_rcsr_source(self):
         """Before the Document exists, so its net comes from the
@@ -166,7 +189,14 @@ class MainWindow(QMainWindow):
         p, _ = QFileDialog.getOpenFileName(
             self, "Open", "", "Phase Tiles (*.phtiles)")
         if p:
-            self.doc.open(p)
+            try:
+                self.doc.open(p)
+            except (OSError, ValueError, KeyError, TypeError,
+                    zipfile.BadZipFile) as e:
+                # a slot's exception only reaches stderr, so without
+                # this a bad file did nothing, silently
+                self.statusBar().showMessage(
+                    f"Could not open {Path(p).name}: {e}")
 
     def save(self):
         if self.doc.path is None:
@@ -202,6 +232,7 @@ class MainWindow(QMainWindow):
         self.runner.progress.connect(
             lambda d, t: self.progress.setValue(d))
         self.runner.finished.connect(self._run_finished)
+        self.runner.failed.connect(self._run_failed)
         self.running = True
         self._refresh()
         self.runner.start()
@@ -219,10 +250,18 @@ class MainWindow(QMainWindow):
     def _run_finished(self, n, stopped):
         self.running = False
         self.progress.hide()
-        self.statusBar().showMessage(
-            f"{n} tiles computed" + (" (stopped)" if stopped else ""),
-            8000)
+        if self.runner.error:
+            msg = (f"Run failed after {n} tiles ({self.runner.error}); "
+                   "the tiles computed are kept.")
+            self.statusBar().showMessage(msg)
+        else:
+            self.statusBar().showMessage(
+                f"{n} tiles computed"
+                + (" (stopped)" if stopped else ""), 8000)
         self._refresh()
+
+    def _run_failed(self, why):
+        print("run failed:", why, file=sys.stderr)
 
     def about(self):
         from phasetiles import __version__

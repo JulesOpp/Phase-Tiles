@@ -53,3 +53,33 @@ def test_minus_zero_and_zero_are_the_same_tile(tmp_path):
     k = s.key(spec, {"J1": 1.0, "J2": 0.0, "T": 0.5})
     assert s.key(spec, {"J1": 1.0, "J2": -0.0, "T": 0.5}) == k
     assert s.key(spec, {"J1": 1.0, "J2": -1e-9, "T": 0.5}) == k
+
+
+def test_clearing_removes_every_tile_and_reports_the_count(tmp_path):
+    st, s = ResultStore(tmp_path / "cache"), default_spec()
+    for x in (0, 1):
+        p = s.params_at(x, 0)
+        st.put(s, p, _r(p))
+    n, size = st.usage()
+    assert n == 2 and size > 0
+    assert st.clear() == 2
+    assert st.usage() == (0, 0)
+    assert st.get(s, s.params_at(0, 0)) is None
+
+
+def test_clearing_leaves_files_that_are_not_tiles(tmp_path):
+    # the cache folder is a preference: it may be shared with other
+    # files, and clearing must only take what the store wrote
+    st, s = ResultStore(tmp_path), default_spec()
+    p = s.params_at(0, 0)
+    st.put(s, p, _r(p))
+    other = tmp_path / "notes.txt"
+    other.write_text("keep me")
+    st.clear()
+    assert other.read_text() == "keep me"
+
+
+def test_clearing_a_missing_cache_is_harmless(tmp_path):
+    st = ResultStore(tmp_path / "never-made")
+    assert st.usage() == (0, 0)
+    assert st.clear() == 0

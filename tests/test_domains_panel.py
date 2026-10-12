@@ -43,9 +43,9 @@ def test_a_computed_tile_shows_its_sites(window):
     runner.run_tiles(w.doc.spec, w.doc.store, 1)
     w.doc.notify_tiles()
     w.doc.select(DiagramModel.build(w.doc).tiles[0].centre)
-    assert stub.calls[-1] == (144, 144)
+    # spins and domains both drawn for one selection
+    assert stub.calls[-2:] == [(144, 144), (144, 144)]
     assert "q = (1/2, 1/2)" in p.info.text()
-    p.mode.setCurrentText("Domains")
     assert "q = (1/2, 1/2)" in p.legend.text()
 
 
