@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=68", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phase-tiles"
+description = "Tiled Ising phase diagrams on 2D nets, with folded scattering"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+dynamic = ["version"]
+authors = [{name = "Jules Oppenheim"}]
+
+# The CORE (phasetiles/) needs only these.  Nothing here pulls in Qt,
+# so `pip install phase-tiles` runs the CLI on a headless box, in CI
+# and in a notebook.
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+]
+
+[project.optional-dependencies]
+# Same upper bound as Crystal Builder (its pyproject says why); lift
+# both together, after its GUI suite passes on the new release.
+gui = ["PySide6>=6.6,<6.10"]
+test = ["pytest>=8", "pytest-qt>=4.4", "ruff>=0.6"]
+build = ["pyinstaller>=6.6"]
+
+[project.scripts]
+phasetiles = "phasetiles.cli:main"
+
+[project.gui-scripts]
+phase-tiles = "phasetilesapp.main:main"
+
+[tool.setuptools.packages.find]
+include = ["phasetiles*", "phasetilesapp*"]
+
+[tool.setuptools.package-data]
+phasetiles = ["data/*.cgd", "data/*.md", "data/samples/*.phtiles"]
+
+[tool.setuptools_scm]
+fallback_version = "0.0.0"
+
+[tool.ruff]
+line-length = 79
+extend-exclude = [".superpowers"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["gui: builds Qt widgets", "slow: takes seconds"]
+filterwarnings = ["error::DeprecationWarning"]
+faulthandler_timeout = 180
