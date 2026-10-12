@@ -87,7 +87,15 @@ class Document(QObject):
         self._reset(default_spec(), None)
 
     def open(self, path):
-        self._reset(project.load_project(path, self.store), path)
+        """Raises ValueError (with a sentence) for a project on a net
+        the current source lacks -- checked before the undo stack is
+        replaced, or every widget would hit KeyError on that net."""
+        spec = project.load_project(path, self.store)
+        if spec.net not in nets.list_2d():
+            raise ValueError(
+                f"it uses net '{spec.net}', which is not in the "
+                "current net file (Preferences ▸ RCSR file)")
+        self._reset(spec, path)
 
     def save(self, path=None):
         self.path = Path(path or self.path)

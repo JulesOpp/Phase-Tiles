@@ -1,6 +1,9 @@
 """The shell: menus, docks, status.  No physics here -- every action
 asks the Document or the core."""
 import dataclasses
+import sys
+import zipfile
+from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QActionGroup, QKeySequence
@@ -174,7 +177,14 @@ class MainWindow(QMainWindow):
         p, _ = QFileDialog.getOpenFileName(
             self, "Open", "", "Phase Tiles (*.phtiles)")
         if p:
-            self.doc.open(p)
+            try:
+                self.doc.open(p)
+            except (OSError, ValueError, KeyError, TypeError,
+                    zipfile.BadZipFile) as e:
+                # a slot's exception only reaches stderr, so without
+                # this a bad file did nothing, silently
+                self.statusBar().showMessage(
+                    f"Could not open {Path(p).name}: {e}")
 
     def save(self):
         if self.doc.path is None:
@@ -210,6 +220,7 @@ class MainWindow(QMainWindow):
         self.runner.progress.connect(
             lambda d, t: self.progress.setValue(d))
         self.runner.finished.connect(self._run_finished)
+        self.runner.failed.connect(self._run_failed)
         self.running = True
         self._refresh()
         self.runner.start()
@@ -227,10 +238,18 @@ class MainWindow(QMainWindow):
     def _run_finished(self, n, stopped):
         self.running = False
         self.progress.hide()
-        self.statusBar().showMessage(
-            f"{n} tiles computed" + (" (stopped)" if stopped else ""),
-            8000)
+        if self.runner.error:
+            msg = (f"Run failed after {n} tiles ({self.runner.error}); "
+                   "the tiles computed are kept.")
+            self.statusBar().showMessage(msg)
+        else:
+            self.statusBar().showMessage(
+                f"{n} tiles computed"
+                + (" (stopped)" if stopped else ""), 8000)
         self._refresh()
+
+    def _run_failed(self, why):
+        print("run failed:", why, file=sys.stderr)
 
     def about(self):
         from phasetiles import __version__

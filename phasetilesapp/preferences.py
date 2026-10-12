@@ -57,9 +57,22 @@ class PreferencesDialog(QDialog):
         if path and not Path(path).is_file():
             self.error.setText(f"{path} is not a file.")
             return False
+        old = self.settings.rcsr_path
+        nets.set_source(path)
+        try:
+            names = nets.list_2d()
+        except Exception as e:          # unparsable file
+            names, why = {}, f"{path} could not be read ({e})."
+        else:
+            why = (f"{path or 'The shipped file'} has no net "
+                   f"'{self.doc.spec.net}', which the open diagram "
+                   "uses; open another diagram first.")
+        if self.doc.spec.net not in names:
+            nets.set_source(old)
+            self.error.setText(why)
+            return False
         self.settings.workers = self.workers.value()
         self.settings.rcsr_path = path
-        nets.set_source(path)
         self.doc._net = None
         self.doc.specChanged.emit(self.doc.spec, self.doc.spec)
         return True

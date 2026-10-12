@@ -64,9 +64,9 @@ class SetupDock(QDockWidget):
         f = QFormLayout(gb.body)
         self.x_sym, self.y_sym = QComboBox(), QComboBox()
         self.x_start, self.x_stop, self.x_step = (_dspin(), _dspin(),
-                                                  _dspin(0, 100, .01))
+                                                  _dspin(1e-4, 100, .01))
         self.y_start, self.y_stop, self.y_step = (_dspin(), _dspin(),
-                                                  _dspin(0, 100, .01))
+                                                  _dspin(1e-4, 100, .01))
         for lab, sym, a, b, c in (
                 ("X", self.x_sym, self.x_start, self.x_stop,
                  self.x_step),

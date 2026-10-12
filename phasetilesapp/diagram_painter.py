@@ -83,10 +83,19 @@ class DiagramModel:
     title: str
     xlabel: str
     ylabel: str
+    error: str | None = None     # why there are no tiles to draw
 
     @classmethod
     def build(cls, doc):
         s, net = doc.spec, doc.net
+        errors, _ = s.validate()
+        if errors:
+            # the same sentences that grey out Run: a step of 0 or a
+            # reversed range raised in every paintEvent, and an
+            # over-cap grid took seconds per repaint
+            return cls([], np.zeros((0, 2, 2)), None, [], {},
+                       (0.0, 1.0, 0.0, 1.0), 1.0, "", s.x.symbol,
+                       s.y.symbol, " ".join(errors))
         n = s.n_cells(net.nsub)
         B, poly = tiling.recip(net)
         mx, my = tiling.scale(B, s.x, s.y)
@@ -183,6 +192,14 @@ class DiagramPainter:
         p.setRenderHint(p.RenderHint.Antialiasing)
         p.setRenderHint(p.RenderHint.SmoothPixmapTransform)
         fg = palette.windowText().color()
+        if model.error:
+            p.setPen(fg)
+            p.drawText(rect.adjusted(40, 40, -40, -40),
+                       Qt.AlignmentFlag.AlignCenter
+                       | Qt.TextFlag.TextWordWrap,
+                       "Nothing to draw: " + model.error)
+            p.restore()
+            return
         a, b = self.panels(rect, model)
         for panel, pr in ((0, a), (1, b)):
             p.save()
