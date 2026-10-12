@@ -19,6 +19,7 @@ class MainWindow(QMainWindow):
     def __init__(self, document=None, make_domain_view=None):
         super().__init__()
         self.settings = Settings()
+        source_note = self._apply_rcsr_source()
         self.doc = document or Document(
             store_root=self.settings.cache_root)
         self._make_domain_view = make_domain_view
@@ -47,6 +48,23 @@ class MainWindow(QMainWindow):
         self.doc.specChanged.connect(self._refresh)
         self.doc.modifiedChanged.connect(self._refresh)
         self._refresh()
+        if source_note:
+            self.statusBar().showMessage(source_note)
+
+    def _apply_rcsr_source(self):
+        """Before the Document exists, so its net comes from the
+        user's file.  A file that has gone missing must not stop the
+        app opening: fall back to the shipped extract and say so."""
+        from pathlib import Path
+
+        from phasetiles import nets
+        path = self.settings.rcsr_path
+        if path and not Path(path).is_file():
+            nets.set_source(None)
+            return (f"RCSR file {path} not found; using the shipped "
+                    "nets (Preferences to change).")
+        nets.set_source(path)
+        return None
 
     def _act(self, text, slot, shortcut=None, checkable=False):
         a = QAction(text, self)
@@ -162,11 +180,18 @@ class MainWindow(QMainWindow):
         if p:
             self.doc.save(p)
 
-    def export_dialog(self):          # Task 13
-        pass
+    def export_dialog(self):
+        from phasetilesapp.export import export_image
+        p, _ = QFileDialog.getSaveFileName(
+            self, "Export Image", "diagram.png",
+            "PNG (*.png);;SVG (*.svg);;JPEG (*.jpg)")
+        if p:
+            export_image(self.doc, p)
+            self.statusBar().showMessage(f"Exported {p}", 6000)
 
-    def preferences(self):            # Task 13
-        pass
+    def preferences(self):
+        from phasetilesapp.preferences import PreferencesDialog
+        PreferencesDialog(self.settings, self.doc, self).exec()
 
     # Run
     def run(self):
