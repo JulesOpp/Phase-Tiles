@@ -7,6 +7,7 @@ half its median so flat (disordered) tiles stay light instead of
 filling the range and going black.  No matplotlib: the point-in-
 polygon test below is the only geometry needed.
 """
+import hashlib
 import itertools
 
 import numpy as np
@@ -21,26 +22,45 @@ def log_tile(img, dyn, med):
                    / (top - lo), 0, 1)
 
 
-def splat(grid, net, Qpix, sigma=None):
-    """Sample the periodic grid function grid[m1, m2] (q = m/n) at
-    Cartesian points Qpix, Gaussian width sigma grid spacings."""
-    n = grid.shape[0]
+# Splat weights depend on the net, n, sigma and the pixel positions,
+# never on the tile's values, so every tile of a diagram shares one
+# set; recomputing them per tile was 85 % of a 441-tile redraw.
+_WEIGHTS = {}
+_WEIGHTS_MAX = 4          # ~12 MB each at n = 48, 81 px
+
+
+def _weights(net, n, Qpix, sigma):
+    key = (net.A.tobytes(), n, sigma, Qpix.shape,
+           hashlib.sha1(np.ascontiguousarray(Qpix)).digest())
+    if key in _WEIGHTS:
+        return _WEIGHTS[key]
     B = np.linalg.inv(net.A).T
     hk = Qpix @ net.A.T * n
     base = np.floor(hk).astype(int)
     h = min(np.linalg.norm(B, axis=1)) / n
-    sigma = sigma or max(0.55, 0.03 * n)   # >= 3 % of the zone width
     r = int(np.ceil(2.5 * sigma))
-    num = np.zeros(hk.shape[:-1])
-    den = np.zeros(hk.shape[:-1])
+    idx, ws = [], []
     for d in itertools.product(range(-r, r + 2), repeat=2):
         p = base + np.array(d)
         dq = ((p - hk) / n) @ B
-        w = np.exp(-0.5 * (np.linalg.norm(dq, axis=-1)
-                           / (sigma * h)) ** 2)
-        num += w * grid[p[..., 0] % n, p[..., 1] % n]
-        den += w
-    return num / den
+        ws.append(np.exp(-0.5 * (np.linalg.norm(dq, axis=-1)
+                                 / (sigma * h)) ** 2))
+        idx.append((p[..., 0] % n) * n + p[..., 1] % n)
+    w = np.array(ws)
+    w /= w.sum(0)
+    if len(_WEIGHTS) >= _WEIGHTS_MAX:
+        _WEIGHTS.pop(next(iter(_WEIGHTS)))
+    _WEIGHTS[key] = (np.array(idx, np.int32), w)
+    return _WEIGHTS[key]
+
+
+def splat(grid, net, Qpix, sigma=None):
+    """Sample the periodic grid function grid[m1, m2] (q = m/n) at
+    Cartesian points Qpix, Gaussian width sigma grid spacings."""
+    n = grid.shape[0]
+    sigma = sigma or max(0.55, 0.03 * n)   # >= 3 % of the zone width
+    idx, w = _weights(net, n, np.asarray(Qpix, float), sigma)
+    return (w * grid.reshape(-1)[idx]).sum(0)
 
 
 def _inside(pts, poly):

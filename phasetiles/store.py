@@ -45,7 +45,10 @@ class ResultStore:
         self.root = Path(root or default_root())
 
     def key(self, spec, params):
-        p = ",".join(f"{k}={v:+.6f}" for k, v in sorted(params.items()))
+        # round then +0.0: -0.0 (which tile_centres can produce) and
+        # tiny negatives must name the same file as 0.0
+        p = ",".join(f"{k}={round(v, 6) + 0.0:+.6f}"
+                     for k, v in sorted(params.items()))
         return hashlib.sha1(p.encode()).hexdigest()[:16]
 
     def _path(self, spec, params):

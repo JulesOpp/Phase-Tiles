@@ -43,3 +43,13 @@ def test_a_truncated_file_reads_as_missing_not_a_crash(tmp_path):
 def test_default_root_follows_the_app_data_variable(app_data):
     from phasetiles.store import default_root
     assert str(default_root()).startswith(app_data)
+
+
+def test_minus_zero_and_zero_are_the_same_tile(tmp_path):
+    # tile_centres can yield -0.0 for a row at 0; a lookup with 0.0
+    # (or a value rounding to 0 from below) must find the same file.
+    s = ResultStore(tmp_path)
+    spec = default_spec()
+    k = s.key(spec, {"J1": 1.0, "J2": 0.0, "T": 0.5})
+    assert s.key(spec, {"J1": 1.0, "J2": -0.0, "T": 0.5}) == k
+    assert s.key(spec, {"J1": 1.0, "J2": -1e-9, "T": 0.5}) == k

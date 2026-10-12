@@ -76,3 +76,22 @@ def test_t0_note_explains_missing_lines(window):
     w.doc.set_spec(w.doc.spec.replace(x=Axis("T", 0.1, 1, 0.3)),
                    "T axis")
     assert "T is an axis" in DiagramModel.build(w.doc).t0_note
+
+
+def test_a_rebuild_renders_only_tiles_it_has_not_seen(window,
+                                                      monkeypatch):
+    from phasetiles import render
+    from phasetilesapp import diagram_painter
+    diagram_painter._TILES.clear()    # windows share one store root
+    w = window()
+    _tiny(w.doc)
+    DiagramModel.build(w.doc)
+    calls = []
+    real = render.tile_image
+    monkeypatch.setattr(render, "tile_image",
+                        lambda *a, **k: calls.append(1) or real(*a, **k))
+    DiagramModel.build(w.doc)
+    assert calls == []
+    w.act_centre_half.trigger()          # display change: re-render
+    DiagramModel.build(w.doc)
+    assert len(calls) == 9

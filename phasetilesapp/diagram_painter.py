@@ -49,6 +49,28 @@ def _qimage(a):
                   QImage.Format.Format_RGBA8888).copy()
 
 
+# Rendered tiles by (store, MC settings, parameters, display look).
+# Results never change once stored, so during a run a rebuild only
+# renders the new tiles (a full 441-tile render is ~2 s; it happens
+# every 500 ms while tiles arrive).  ~80 kB per entry.
+_TILES = {}
+_TILES_MAX = 1024
+_SEGMENTS = {}
+
+
+def _remember(cache, key, value, cap):
+    if len(cache) >= cap:
+        cache.pop(next(iter(cache)))
+    cache[key] = value
+
+
+def _render_tile(r, net, poly, n, qlab, d):
+    inten = scattering.folded_intensity(r.C.astype(complex), net, d.qmax)
+    arr, qext = render.tile_image(inten, net, poly, d.centre, NPX, d.dyn)
+    ph = classify.classify(r.phi2, r.absm, n, qlab, d.phi0, net.nsub)
+    return arr, _qimage(arr), ph, qext
+
+
 @dataclass
 class DiagramModel:
     tiles: list
@@ -70,34 +92,43 @@ class DiagramModel:
         mx, my = tiling.scale(B, s.x, s.y)
         qlab = classify.canonical_q(net, n)
         tiles, colours, counts = [], dict(PHASE_COLOURS), {}
+        d = s.display
+        look = (d.centre, d.dyn, d.phi0, d.qmax)
         for c in tiling.tile_centres(B, s.x, s.y):
-            r = doc.store.get(s, s.params_at(c.x, c.y))
+            p = s.params_at(c.x, c.y)
             tp = tiling.tile_polygon(poly, mx, my, c.x, c.y)
-            if r is None:
-                tiles.append(Tile(c, tp, None, None, None, ()))
-                continue
-            inten = scattering.folded_intensity(r.C.astype(complex), net,
-                                                s.display.qmax)
-            arr, (qx0, qx1, qy0, qy1) = render.tile_image(
-                inten, net, poly, s.display.centre, NPX, s.display.dyn)
-            ph = classify.classify(r.phi2, r.absm, n, qlab,
-                                   s.display.phi0, net.nsub)
+            key = (str(doc.store.root), s.mc_key(),
+                   doc.store.key(s, p), look)
+            hit = _TILES.get(key)
+            if hit is None:
+                r = doc.store.get(s, p)
+                if r is None:
+                    tiles.append(Tile(c, tp, None, None, None, ()))
+                    continue
+                hit = _render_tile(r, net, poly, n, qlab, d)
+                _remember(_TILES, key, hit, _TILES_MAX)
+            arr, img, ph, (qx0, qx1, qy0, qy1) = hit
             if ph.label not in colours:
                 colours[ph.label] = CYCLE[(len(colours) - 2)
                                           % len(CYCLE)]
             counts[ph.label] = counts.get(ph.label, 0) + 1
             ext = (c.x + qx0 * mx, c.x + qx1 * mx,
                    c.y + qy0 * my, c.y + qy1 * my)
-            tiles.append(Tile(c, tp, arr, _qimage(arr), ph, ext))
+            tiles.append(Tile(c, tp, arr, img, ph, ext))
         note = groundstate.unavailable_reason(s, net)
         seg = np.zeros((0, 2, 2))
         if note is None and s.display.show_t0:
-            bs = groundstate.sums(net, s.hamiltonian.nshell())
-            if bs is None:
+            gkey = (s.net, s.hamiltonian, tuple(s.fixed_dict().items()),
+                    s.x, s.y)
+            if gkey not in _SEGMENTS:
+                bs = groundstate.sums(net, s.hamiltonian.nshell())
+                _remember(_SEGMENTS, gkey, None if bs is None else
+                          groundstate.segments(
+                              *groundstate.label_grid(bs, s)), 16)
+            seg = _SEGMENTS[gkey]
+            if seg is None:
                 note = "T = 0 lines unavailable for this net."
-            else:
-                seg = groundstate.segments(
-                    *groundstate.label_grid(bs, s))
+                seg = np.zeros((0, 2, 2))
         legend = sorted(((k, colours[k], v) for k, v in counts.items()),
                         key=lambda e: (e[0] not in PHASE_COLOURS,
                                        -e[2]))

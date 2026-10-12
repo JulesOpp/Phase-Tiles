@@ -4,7 +4,12 @@ import dataclasses
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QActionGroup, QKeySequence
-from PySide6.QtWidgets import QFileDialog, QMainWindow, QMessageBox
+from PySide6.QtWidgets import (
+    QFileDialog,
+    QMainWindow,
+    QMessageBox,
+    QProgressBar,
+)
 
 from phasetilesapp.document import Document
 from phasetilesapp.settings import Settings
@@ -29,6 +34,11 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea,
                            self.setup)
         self.running = False
+        self.runner = None
+        self.progress = QProgressBar()
+        self.progress.setMaximumWidth(240)
+        self.progress.hide()
+        self.statusBar().addPermanentWidget(self.progress)
         self.doc.specChanged.connect(self._refresh)
         self.doc.modifiedChanged.connect(self._refresh)
         self._refresh()
@@ -101,6 +111,7 @@ class MainWindow(QMainWindow):
         self.act_redo.setEnabled(st.can_redo)
         self.act_redo.setText("&Redo " + st.redo_text)
         self.act_run.setEnabled(self.setup.ok and not self.running)
+        self.act_stop.setEnabled(self.running)
         self.act_centre_gamma.setChecked(d.centre == "gamma")
         self.act_centre_half.setChecked(d.centre == "half")
         self.act_show_t0.setChecked(d.show_t0)
@@ -152,11 +163,36 @@ class MainWindow(QMainWindow):
     def preferences(self):            # Task 13
         pass
 
-    def run(self):                    # Task 11
-        pass
+    # Run
+    def run(self):
+        from phasetilesapp.run_controller import RunController
+        self.runner = RunController(self.doc, self.settings.workers,
+                                    self)
+        self.runner.started.connect(self._run_started)
+        self.runner.progress.connect(
+            lambda d, t: self.progress.setValue(d))
+        self.runner.finished.connect(self._run_finished)
+        self.running = True
+        self._refresh()
+        self.runner.start()
 
-    def stop(self):                   # Task 11
-        pass
+    def stop(self):
+        if self.runner:
+            self.runner.stop()
+
+    def _run_started(self, total):
+        self.progress.setRange(0, max(total, 1))
+        self.progress.setValue(0)
+        self.progress.show()
+        self.statusBar().showMessage(f"Running {total} tiles…")
+
+    def _run_finished(self, n, stopped):
+        self.running = False
+        self.progress.hide()
+        self.statusBar().showMessage(
+            f"{n} tiles computed" + (" (stopped)" if stopped else ""),
+            8000)
+        self._refresh()
 
     def about(self):
         from phasetiles import __version__
@@ -172,6 +208,8 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, ev):
         if self._discard_ok():
+            if self.runner is not None and self.runner.is_running():
+                self.runner.stop_and_wait()
             ev.accept()
         else:
             ev.ignore()
