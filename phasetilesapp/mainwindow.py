@@ -2,6 +2,7 @@
 asks the Document or the core."""
 import dataclasses
 
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QActionGroup, QKeySequence
 from PySide6.QtWidgets import QFileDialog, QMainWindow, QMessageBox
 
@@ -23,6 +24,11 @@ class MainWindow(QMainWindow):
         from phasetilesapp.diagram_view import DiagramView
         self.diagram = DiagramView(self.doc)
         self.setCentralWidget(self.diagram)
+        from phasetilesapp.setup_dock import SetupDock
+        self.setup = SetupDock(self.doc, self)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea,
+                           self.setup)
+        self.running = False
         self.doc.specChanged.connect(self._refresh)
         self.doc.modifiedChanged.connect(self._refresh)
         self._refresh()
@@ -94,6 +100,7 @@ class MainWindow(QMainWindow):
         self.act_undo.setText("&Undo " + st.undo_text)
         self.act_redo.setEnabled(st.can_redo)
         self.act_redo.setText("&Redo " + st.redo_text)
+        self.act_run.setEnabled(self.setup.ok and not self.running)
         self.act_centre_gamma.setChecked(d.centre == "gamma")
         self.act_centre_half.setChecked(d.centre == "half")
         self.act_show_t0.setChecked(d.show_t0)
