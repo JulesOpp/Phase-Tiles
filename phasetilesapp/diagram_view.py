@@ -14,7 +14,7 @@ class DiagramView(QWidget):
         self._model = None
         self.setSizePolicy(QSizePolicy.Policy.Expanding,
                            QSizePolicy.Policy.Expanding)
-        self.setMinimumSize(700, 360)
+        self.setMinimumSize(420, 300)
         for sig in (doc.specChanged, doc.tilesChanged):
             sig.connect(self.invalidate)
         doc.selectionChanged.connect(lambda *_: self.update())

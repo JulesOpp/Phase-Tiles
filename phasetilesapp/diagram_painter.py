@@ -221,7 +221,9 @@ class DiagramPainter:
             p.restore()
             self._axes(p, rect, model, panel, pr, fg)
         self._titles(p, rect, model, a, b, fg)
-        self._legend(p, b, model, fg)
+        self._legend(p, b, model, fg,
+                     self.selected_label(model, selected),
+                     palette.highlight().color())
         p.restore()
 
     def _axes(self, p, rect, model, panel, pr, fg):
@@ -275,7 +277,16 @@ class DiagramPainter:
                        Qt.AlignmentFlag.AlignLeft, model.t0_note)
             p.restore()
 
-    def _legend(self, p, b, model, fg):
+    @staticmethod
+    def selected_label(model, selected):
+        """The phase of the selected tile, or None (nothing selected,
+        or the tile is not computed)."""
+        for t in model.tiles:
+            if t.centre == selected and t.phase is not None:
+                return t.phase.label
+        return None
+
+    def _legend(self, p, b, model, fg, marked=None, mark=None):
         fm = p.fontMetrics()
         x, y = b.right() + 16, b.top() + 2
         p.setPen(fg)
@@ -283,6 +294,13 @@ class DiagramPainter:
         y += fm.height() + 8
         sw = fm.height() - 2
         for label, colour, count in model.legend:
+            if label == marked:
+                # same colour as the tile's selection outline
+                p.setPen(QPen(mark, 2.0))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawRoundedRect(QRectF(x - 4, y - 3, self.LEGEND - 18,
+                                         sw + 6), 3, 3)
+                p.setPen(fg)
             p.fillRect(QRectF(x, y, sw, sw), QColor(colour))
             p.setPen(QPen(fg, 0.5))
             p.drawRect(QRectF(x, y, sw, sw))

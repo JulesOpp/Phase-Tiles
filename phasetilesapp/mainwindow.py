@@ -24,7 +24,6 @@ class MainWindow(QMainWindow):
             store_root=self.settings.cache_root)
         self._make_domain_view = make_domain_view
         self.setWindowTitle("Phase Tiles")
-        self.resize(1400, 860)
         self._build_actions()
         self._build_menus()
         from phasetilesapp.diagram_view import DiagramView
@@ -48,8 +47,17 @@ class MainWindow(QMainWindow):
         self.doc.specChanged.connect(self._refresh)
         self.doc.modifiedChanged.connect(self._refresh)
         self._refresh()
+        self._fit_screen()
         if source_note:
             self.statusBar().showMessage(source_note)
+
+    def _fit_screen(self):
+        """1400 x 860 where it fits, else the available screen less a
+        margin: a fixed 860 put the status bar below a 13-inch
+        laptop's dock."""
+        avail = self.screen().availableGeometry()
+        self.resize(min(1400, avail.width() - 40),
+                    min(860, avail.height() - 40))
 
     def _apply_rcsr_source(self):
         """Before the Document exists, so its net comes from the

@@ -1,12 +1,11 @@
-"""The selected tile in real space: its last MC snapshot as spins,
-or labelled into orientation and antiphase domains (core
+"""The selected tile in real space: its last MC snapshot as spins
+and, beside it, labelled into orientation and antiphase domains (core
 domains.domain_map).  The view is a factory argument so widget tests
 can inject a stub (CLAUDE.md, testing)."""
 import numpy as np
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import (
-    QComboBox,
     QDockWidget,
     QLabel,
     QVBoxLayout,
@@ -14,6 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from phasetiles import classify, domains
+from phasetilesapp.collapsible import Section, fixed_dock, scrolling
 from phasetilesapp.diagram_painter import CYCLE
 
 WALL = QColor(220, 220, 220)
@@ -25,7 +25,7 @@ class DomainView(QWidget):
         self.pos = np.zeros((0, 2))
         self.cols = []
         self.zoom = 1.0
-        self.setMinimumSize(320, 320)
+        self.setMinimumSize(220, 220)
 
     def widget(self):
         return self
@@ -73,21 +73,28 @@ class DomainsPanel(QDockWidget):
         self.doc = doc
         body = QWidget()
         v = QVBoxLayout(body)
-        self.mode = QComboBox()
-        self.mode.addItems(["Spins", "Domains"])
         self.info = QLabel()
         self.info.setWordWrap(True)
         self.info.setTextFormat(Qt.TextFormat.PlainText)
         self.legend = QLabel()
         self.legend.setWordWrap(True)
         self.legend.setTextFormat(Qt.TextFormat.RichText)
-        self.view = (make_view or DomainView)()
-        v.addWidget(self.mode)
-        v.addWidget(self.view.widget(), 1)
-        v.addWidget(self.info)
-        v.addWidget(self.legend)
-        self.setWidget(body)
-        self.mode.currentTextChanged.connect(self.refresh)
+        self.spin_legend = QLabel()
+        self.spin_legend.setTextFormat(Qt.TextFormat.RichText)
+        make = make_view or DomainView
+        self.spins_view, self.domains_view = make(), make()
+        for title, view, note in (
+                ("Tile", None, self.info),
+                ("Spins", self.spins_view, self.spin_legend),
+                ("Domains", self.domains_view, self.legend)):
+            sec = Section(title)
+            lay = QVBoxLayout(sec.body)
+            if view is not None:
+                lay.addWidget(view.widget(), 1)
+            lay.addWidget(note)
+            v.addWidget(sec, 0 if view is None else 1)
+        self.setWidget(scrolling(body))
+        fixed_dock(self)
         doc.selectionChanged.connect(self.refresh)
         doc.tilesChanged.connect(self.refresh)
         doc.specChanged.connect(self.refresh)
@@ -95,7 +102,9 @@ class DomainsPanel(QDockWidget):
 
     def _clear(self, text):
         self.info.setText(text)
-        self.view.set_data(np.zeros((0, 2)), [], None)
+        self.spin_legend.setText("")
+        for view in (self.spins_view, self.domains_view):
+            view.set_data(np.zeros((0, 2)), [], None)
 
     def refresh(self, *_):
         t = self.doc.selected
@@ -118,22 +127,25 @@ class DomainsPanel(QDockWidget):
             f"|m| = {r.absm:.2f} · drift {r.drift:.3f} · "
             f"E/site {r.energy:.3f}")
         pos = domains.site_positions(net, n)
-        if self.mode.currentText() == "Spins" or not ph.star:
-            up, dn = self.palette().highlight().color(), QColor(150, 150,
-                                                                150)
-            cols = [up if x > 0 else dn for x in r.snap]
-            if self.mode.currentText() == "Domains":
-                self.legend.setText("disordered: no domains to label")
-        else:
-            dm = domains.domain_map(net, n, r.snap,
-                                    r.C.astype(complex), ph.star)
-            cols = [WALL if o < 0
-                    else QColor(CYCLE[o % len(CYCLE)]).lighter(
-                        100 + 45 * int(tr))
-                    for o, tr in zip(dm.orientation, dm.translation,
-                                     strict=True)]
-            self.legend.setText(" · ".join(
-                f"{_swatch(CYCLE[i % len(CYCLE)])} q = {nm}"
-                for i, nm in enumerate(dm.names))
-                + f" · lighter = antiphase · {_swatch(WALL)} wall")
-        self.view.set_data(pos, cols, net.A)
+        up, dn = self.palette().highlight().color(), QColor(150, 150,
+                                                            150)
+        self.spins_view.set_data(pos, [up if x > 0 else dn
+                                       for x in r.snap], net.A)
+        self.spin_legend.setText(f"{_swatch(up)} s = +1 · "
+                                 f"{_swatch(dn)} s = −1")
+        if not ph.star:
+            self.legend.setText("disordered: no domains to label")
+            self.domains_view.set_data(np.zeros((0, 2)), [], None)
+            return
+        dm = domains.domain_map(net, n, r.snap, r.C.astype(complex),
+                                ph.star)
+        cols = [WALL if o < 0
+                else QColor(CYCLE[o % len(CYCLE)]).lighter(
+                    100 + 45 * int(tr))
+                for o, tr in zip(dm.orientation, dm.translation,
+                                 strict=True)]
+        self.legend.setText(" · ".join(
+            f"{_swatch(CYCLE[i % len(CYCLE)])} q = {nm}"
+            for i, nm in enumerate(dm.names))
+            + f" · lighter = antiphase · {_swatch(WALL)} wall")
+        self.domains_view.set_data(pos, cols, net.A)

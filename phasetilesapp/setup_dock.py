@@ -7,7 +7,6 @@ from PySide6.QtWidgets import (
     QDockWidget,
     QDoubleSpinBox,
     QFormLayout,
-    QGroupBox,
     QHBoxLayout,
     QLabel,
     QSpinBox,
@@ -17,6 +16,7 @@ from PySide6.QtWidgets import (
 
 from phasetiles import nets
 from phasetiles.spec import Axis, MCSettings
+from phasetilesapp.collapsible import Section, fixed_dock, scrolling
 from phasetilesapp.hamiltonian_editor import HamiltonianEditor
 from phasetilesapp.net_preview import NetPreview
 
@@ -37,8 +37,8 @@ class SetupDock(QDockWidget):
         body = QWidget()
         v = QVBoxLayout(body)
         # topology
-        gb = QGroupBox("Topology")
-        f = QFormLayout(gb)
+        gb = Section("Topology")
+        f = QFormLayout(gb.body)
         self.family = QComboBox()
         self.family.addItem("Common")
         groups = {g for g, _ in nets.list_2d().values()}
@@ -54,14 +54,14 @@ class SetupDock(QDockWidget):
         f.addRow(self.net_info)
         v.addWidget(gb)
         # hamiltonian
-        gb = QGroupBox("Hamiltonian (J > 0 ferro)")
-        lay = QVBoxLayout(gb)
+        gb = Section("Hamiltonian (J > 0 ferro)")
+        lay = QVBoxLayout(gb.body)
         self.ham = HamiltonianEditor(doc)
         lay.addWidget(self.ham)
         v.addWidget(gb)
         # axes
-        gb = QGroupBox("Varied parameters")
-        f = QFormLayout(gb)
+        gb = Section("Varied parameters")
+        f = QFormLayout(gb.body)
         self.x_sym, self.y_sym = QComboBox(), QComboBox()
         self.x_start, self.x_stop, self.x_step = (_dspin(), _dspin(),
                                                   _dspin(0, 100, .01))
@@ -72,15 +72,18 @@ class SetupDock(QDockWidget):
                  self.x_step),
                 ("Y", self.y_sym, self.y_start, self.y_stop,
                  self.y_step)):
+            # symbol on its own line: one seven-widget row set the
+            # dock's minimum width, and so the window's
+            f.addRow(lab, sym)
             row = QHBoxLayout()
-            for wdg in (sym, QLabel("from"), a, QLabel("to"), b,
+            for wdg in (QLabel("from"), a, QLabel("to"), b,
                         QLabel("step"), c):
                 row.addWidget(wdg)
-            f.addRow(lab, row)
+            f.addRow("", row)
         v.addWidget(gb)
         # MC
-        gb = QGroupBox("Monte Carlo")
-        f = QFormLayout(gb)
+        gb = Section("Monte Carlo")
+        f = QFormLayout(gb.body)
         self.mc_n = QSpinBox()
         self.mc_n.setRange(0, 192)
         self.mc_n.setSingleStep(12)
@@ -102,7 +105,8 @@ class SetupDock(QDockWidget):
         self.messages.setTextFormat(Qt.TextFormat.PlainText)
         v.addWidget(self.messages)
         v.addStretch(1)
-        self.setWidget(body)
+        self.setWidget(scrolling(body))
+        fixed_dock(self)
         # wiring: each user edit -> one set_spec
         self.family.currentTextChanged.connect(self._fill_nets)
         self.net.currentIndexChanged.connect(self._net_chosen)

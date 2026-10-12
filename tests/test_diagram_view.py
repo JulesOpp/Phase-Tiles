@@ -95,3 +95,24 @@ def test_a_rebuild_renders_only_tiles_it_has_not_seen(window,
     w.act_centre_half.trigger()          # display change: re-render
     DiagramModel.build(w.doc)
     assert len(calls) == 9
+
+
+def test_the_selected_tiles_phase_is_marked_in_the_legend(window):
+    w = window()
+    _tiny(w.doc)
+    m = DiagramModel.build(w.doc)
+    t = next(t for t in m.tiles if t.phase.label == "ferro (q = 0)")
+    painter = DiagramPainter()
+    assert painter.selected_label(m, t.centre) == "ferro (q = 0)"
+    assert painter.selected_label(m, None) is None
+
+    def legend_pixels(sel):
+        img = QImage(1400, 700, QImage.Format.Format_RGB32)
+        p = QPainter(img)
+        r = QRectF(0, 0, 1400, 700)
+        painter.paint(p, r, m, w.palette(), sel)
+        p.end()
+        b = painter.panels(r, m)[1]
+        return img.copy(int(b.right()) + 4, int(b.top()),
+                        int(painter.LEGEND) - 8, int(b.height()))
+    assert legend_pixels(t.centre) != legend_pixels(None)
