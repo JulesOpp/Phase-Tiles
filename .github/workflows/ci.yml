@@ -68,15 +68,15 @@ jobs:
           choco install innosetup -y --no-progress
           iscc /DAppVersion=$v packaging\phase-tiles.iss
       # Every run still builds and self-tests the bundle, but only a
-      # tag (for the release job) or a manual run keeps the files:
-      # ~190 MB a run against 0.5 GB of private-repo storage.
+      # tag (for the release job) or a manual run keeps the files
+      # (~190 MB a run): the release page holds them for good.
       - uses: actions/upload-artifact@v4
         if: >-
           startsWith(github.ref, 'refs/tags/v')
           || github.event_name == 'workflow_dispatch'
         with:
           name: phase-tiles-${{ matrix.os }}
-          retention-days: 3
+          retention-days: 7
           path: |
             dist/*.dmg
             dist/*setup*.exe

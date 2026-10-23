@@ -94,7 +94,8 @@ ruff check .
 
 `phasetiles/` is the physics and imports no Qt. `phasetilesapp/` is
 the PySide6 interface. [CLAUDE.md](CLAUDE.md) lists the design
-invariants. To build the installers:
+invariants, and [docs/design-decisions.md](docs/design-decisions.md)
+explains the choices made while building it and the known limits. To build the installers:
 
 ```bash
 python -m pip install -e ".[gui,build]"

@@ -1,6 +1,6 @@
-# Phase Tiles build: decisions and deferred findings
+# Phase Tiles: design decisions and known limits
 
-Every decision taken on the user's behalf while executing docs/superpowers/plans/2026-10-11-phase-tiles-app.md, and the review findings left for later, copied from the execution ledger before it was deleted.
+The decisions taken while building Phase Tiles (October 2026), each with what it would cost if wrong, and the review findings left for later. The invariants that must not be undone are in CLAUDE.md. Task numbers refer to the original build plan, which is not kept in the repository.
 
 ## Rulings
 
@@ -48,36 +48,13 @@ Every decision taken on the user's behalf while executing docs/superpowers/plans
 - Post-plan (user request 2026-10-12, branch feat/gui-layout 70f7a4c): window fits screen, scrolling foldable docks, docks not closable, spins+domains together, legend marks selected phase, selftest removes scratch dir. Ruling: "all windows not closable" read as the two docks — the main window must still close to quit — cost if wrong: one setFeatures line.
 - Final: Ruling: test_an_invalid_range_disables_run_and_says_why now uses a reversed range — step 0 can no longer be typed — cost: none.
 
-## Deferred minors
+## Deferred minors (and what has since been fixed)
 
 - Task 12: minor (deferred): phase label names the star by its canonical q (e.g. "q = (0, 1/2)") while the single domain shown may be the (1/2, 0) member — correct but can read as a contradiction.
 - Task 13: minor (deferred): a user RCSR file that redefines a shipped net name (e.g. a different "sql") shares cache keys with the shipped net — results/renders keyed by name, not geometry.
-- Final: minor (deferred): validate() allocates ax.values() before the tile cap; CLI --vary J1=-1:1:1e-9 allocates ~16 GB; NaN/inf step raises.
-- Final: minor (deferred): Stop cannot interrupt tiles already in a worker; status stays "Running…"; stop_and_wait(30 s) can time out on large n.
+- Final: fixed before the public release: validate() checks the tile cap before ax.values(), and a NaN/inf axis number is an error.
+- Final: fixed before the public release: each pool worker gets the stop Event, so Stop interrupts running tiles.
 - Final: minor (deferred): MAX_TILES caps count only, no time estimate; 5000-tile rebuild every 500 ms during a run.
-- Final: minor (deferred): Export Image OSError (e.g. no suffix) is silent.
+- Final: fixed before the public release: Save and Export Image report an OSError in the status bar.
 - Final: minor (deferred): fallback "T = 0 lines unavailable for this net." gives no reason.
 - Final: minor (deferred): user RCSR file redefining a shipped net name shares cache keys (repeat of Task 13 minor); Task 12 phase-label wording.
-
-## Task completion
-
-- Task 1: complete (commits fc371ad..d26d6d4, tests: .venv/bin/python -m pytest -q → 1 passed in 0.01s)
-- Task 2: complete (commits d26d6d4..3e69525, tests: .venv/bin/python -m pytest -q → 9 passed in 2.44s)
-- Task 3: complete (commits 3e69525..e684be5, tests: .venv/bin/python -m pytest -q → 29 passed in 2.43s)
-- Task 4: complete (commits e684be5..fea7eef, tests: .venv/bin/python -m pytest -q → 37 passed in 2.99s)
-- Task 5: complete (commits fea7eef..01d6752, tests: .venv/bin/python -m pytest -q → 51 passed in 6.90s)
-- Task 6: complete (commits 01d6752..2f256ec, tests: .venv/bin/python -m pytest -q → 56 passed in 6.94s)
-- Task 7: complete (commits 2f256ec..5def62b, tests: .venv/bin/python -m pytest -q → 70 passed in 7.45s)
-- MILESTONE M1 (core, Tasks 1–7) reached 2026-10-11 at 5def62b on branch build/app. Next session: resume at Task 8 (GUI shell). Env: ~/GitHub/Phase-Tiles/.venv (python 3.12, [gui,test] installed). Run tests with .venv/bin/python -m pytest -q. Carry-forward notes for later tasks: avoid variable name `I` (ruff E741); zip() needs strict= (B905); MainWindow._refresh must tolerate setup/running not existing yet (pre-flight ruling for T8).
-- Task 8: complete (commits 5def62b..0b86a54, tests: .venv/bin/python -m pytest -q → 78 passed in 7.47s)
-- Task 9: complete (commits 0b86a54..ac9458d, tests: .venv/bin/python -m pytest -q → 84 passed in 13.51s)
-- Task 10: complete (commits ac9458d..d97ceef, tests: .venv/bin/python -m pytest -q → 92 passed in 13.72s)
-- Task 11: complete (commits d97ceef..f193bc9, tests: .venv/bin/python -m pytest -q → 100 passed in 10.19s)
-- Task 12: complete (commits f193bc9..f44d9be, tests: .venv/bin/python -m pytest -q → 104 passed in 12.10s)
-- Task 13: complete (commits f44d9be..dee139f, tests: .venv/bin/python -m pytest -q → 109 passed in 13.76s)
-- MILESTONE M2 (GUI, Tasks 8–13) reached 2026-10-11 at dee139f on branch build/app. Next session: resume at Task 14 (sample, --selftest, packaging), then Task 15 (CI; ask before creating/pushing the GitHub repo), then the final whole-branch review. Carry-forward: window fixture now isolates QSettings AND PHASETILES_APP_DATA per test; render._weights / diagram_painter._TILES are module caches (clear in tests that count renders).
-- Task 14: complete (commits dee139f..b63959e, tests: .venv/bin/python -m pytest -q → 114 passed in 14.25s)
-- Task 15: complete (commits b63959e..7c1330d, tests: CI run 38199148500 → 3 test + 3 bundle jobs pass, release skipped (no tag); PR JulesOpp/Phase-Tiles#1 merged by user)
-- Final: fixed invalid spec raising/freezing in paint — test_a_spec_run_refuses_paints_its_reason_not_tiles[x0..x2] + test_the_step_boxes_cannot_be_set_to_zero RED→GREEN, suite 129/129
-- Final: fixed failed run stuck in "Running" — test_a_run_that_dies_says_so_and_stops_running RED→GREEN, suite 129/129
-- Final: fixed bad project / missing net silently broke the document — test_a_corrupt_project_is_refused_with_a_sentence, test_a_project_on_an_unknown_net_is_refused, test_preferences_refuse_a_net_file_without_the_current_net RED→GREEN, suite 129/129
