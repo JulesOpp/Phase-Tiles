@@ -42,8 +42,8 @@ boundaries.*
 Download the installer for your platform from the
 [Releases](https://github.com/JulesOpp/Phase-Tiles/releases) page:
 
-- macOS: `Phase-Tiles-<version>-arm64.dmg` (Apple silicon) or
-  `-x86_64.dmg` (Intel)
+- macOS 12.3 or later: `Phase-Tiles-<version>-arm64.dmg` (Apple
+  silicon) or `-x86_64.dmg` (Intel)
 - Windows: `Phase-Tiles-<version>-setup.exe`. It installs per user
   and needs no admin rights.
 

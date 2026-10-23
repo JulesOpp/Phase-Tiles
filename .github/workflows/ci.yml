@@ -49,7 +49,11 @@ jobs:
       - name: build (macOS)
         if: runner.os == 'macOS'
         run: |
+          # the runner's own numpy/scipy wheels need its macOS (14+);
+          # 1.0 shipped them and would not start on macOS 13
+          python packaging/macos_wheels.py
           pyinstaller --noconfirm packaging/macos.spec
+          python packaging/check_macos_min.py
           "dist/Phase Tiles.app/Contents/MacOS/Phase Tiles" --selftest "$PWD/bundle-selftest.png"
           test -s bundle-selftest.png
           python packaging/makedmg.py

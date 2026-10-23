@@ -49,3 +49,13 @@ def test_the_bundle_carries_every_licence_its_contents_need():
     assert ("LGPL-3.0.txt", "qt") in names
     for pkg in bundle.NOTICE_PACKAGES:
         assert any(d.startswith(f"licenses/{pkg}") for _, d in datas), pkg
+
+
+def test_the_mac_app_states_the_macos_it_is_checked_against():
+    # LSMinimumSystemVersion and check_macos_min.py read one constant,
+    # so the Finder's "needs a newer macOS" and CI's check agree
+    spec_text = (ROOT / "packaging" / "macos.spec").read_text()
+    assert '"LSMinimumSystemVersion": bundle.MACOS_MIN' in spec_text
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    assert "packaging/macos_wheels.py" in ci
+    assert "packaging/check_macos_min.py" in ci

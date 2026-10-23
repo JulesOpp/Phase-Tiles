@@ -18,6 +18,10 @@ ROOT = HERE.parent
 ICONS = HERE / "icons"
 NAME = "Phase Tiles"
 COPYRIGHT = "Copyright (c) 2026 Jules Oppenheim, MIT License"
+# Qt 6.9 needs 12.0 and scipy's oldest arm64 wheel 12.3 (its
+# gfortran); CI installs numpy/scipy wheels built for this, and
+# check_macos_min.py holds every binary in the .app to it.
+MACOS_MIN = "12.3"
 
 # spawn workers import these by name; PyInstaller's analysis cannot
 # see a pickled function's module.

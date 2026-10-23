@@ -23,6 +23,7 @@ app = BUNDLE(coll, name=bundle.NAME + ".app",
              info_plist={"CFBundleShortVersionString": bundle.version(),
                          "NSHighResolutionCapable": True,
                          "NSHumanReadableCopyright": bundle.COPYRIGHT,
+                         "LSMinimumSystemVersion": bundle.MACOS_MIN,
                          "CFBundleDocumentTypes": [{
                              "CFBundleTypeName": "Phase Tiles diagram",
                              "CFBundleTypeExtensions": ["phtiles"],
