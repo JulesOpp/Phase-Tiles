@@ -1,0 +1,40 @@
+Phase Tiles -- third-party notices
+==================================
+
+Phase Tiles is MIT licensed (see LICENSE beside this file).  The
+installers for macOS and Windows also contain the components below,
+each under its own licence; the full texts are in the folders beside
+this file.
+
+Python (CPython)
+  Python Software Foundation License Version 2, plus the licences of
+  the components CPython itself bundles.
+  Text: python/LICENSE.txt
+  https://www.python.org/
+
+NumPy
+  BSD 3-Clause, with bundled parts under 0BSD, MIT, Zlib and CC0-1.0.
+  Texts: numpy/
+  https://numpy.org/
+
+SciPy
+  BSD 3-Clause, with bundled parts under their own permissive
+  licences (Qhull, DUCC, ...).
+  Texts: scipy/
+  https://scipy.org/
+
+Qt for Python (PySide6, shiboken6) and the Qt libraries
+  GNU Lesser General Public License v3 (LGPL-3.0-only).
+  Texts: qt/LGPL-3.0.txt and qt/GPL-3.0.txt (the LGPL is a set of
+  additional permissions on top of the GPL v3).
+  https://www.qt.io/qt-for-python  -- source: https://code.qt.io/
+
+  Phase Tiles uses Qt unmodified and as separate shared libraries
+  (in the application's _internal folder, or Contents/Frameworks on
+  macOS).  You may replace them with your own builds of the same Qt
+  version.  The source of the exact Qt and PySide6 versions is
+  available from the links above.
+
+The RCSR net data (phasetiles/data/rcsr2d.cgd) comes from the
+Reticular Chemistry Structure Resource, http://rcsr.net -- see
+phasetiles/data/PROVENANCE.md.

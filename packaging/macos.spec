@@ -9,7 +9,8 @@ sys.path.insert(0, str(Path(SPECPATH)))
 import bundle  # noqa: E402
 
 a = Analysis([str(bundle.ROOT / "phasetilesapp" / "main.py")],
-             pathex=[str(bundle.ROOT)], datas=bundle.project_datas(),
+             pathex=[str(bundle.ROOT)],
+             datas=bundle.project_datas() + bundle.licence_datas(),
              hiddenimports=bundle.HIDDEN_IMPORTS,
              excludes=bundle.EXCLUDES)
 pyz = PYZ(a.pure)
@@ -21,6 +22,7 @@ app = BUNDLE(coll, name=bundle.NAME + ".app",
              bundle_identifier="org.phasetiles.app",
              info_plist={"CFBundleShortVersionString": bundle.version(),
                          "NSHighResolutionCapable": True,
+                         "NSHumanReadableCopyright": bundle.COPYRIGHT,
                          "CFBundleDocumentTypes": [{
                              "CFBundleTypeName": "Phase Tiles diagram",
                              "CFBundleTypeExtensions": ["phtiles"],

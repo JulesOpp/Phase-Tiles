@@ -13,7 +13,7 @@
 
 #define AppName "Phase Tiles"
 #define AppExeName "Phase Tiles.exe"
-#define AppPublisher "Phase Tiles"
+#define AppPublisher "Jules Oppenheim"
 #define SourceDir "..\dist\Phase Tiles"
 
 [Setup]
@@ -28,6 +28,8 @@ DisableProgramGroupPage=yes
 OutputDir=..\dist
 OutputBaseFilename=Phase-Tiles-{#AppVersion}-setup
 SetupIconFile=icons\phase-tiles.ico
+LicenseFile=..\LICENSE
+AppPublisherURL=https://github.com/JulesOpp/Phase-Tiles
 UninstallDisplayIcon={app}\{#AppExeName}
 Compression=lzma2/max
 SolidCompression=yes

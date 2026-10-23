@@ -9,7 +9,7 @@ readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.11"
 dynamic = ["version"]
-authors = [{name = "Jules Oppenheim"}]
+authors = [{name = "Jules Oppenheim", email = "juliuso@princeton.edu"}]
 
 # The CORE (phasetiles/) needs only these.  Nothing here pulls in Qt,
 # so `pip install phase-tiles` runs the CLI on a headless box, in CI
@@ -18,6 +18,10 @@ dependencies = [
     "numpy>=1.26",
     "scipy>=1.11",
 ]
+
+[project.urls]
+Homepage = "https://github.com/JulesOpp/Phase-Tiles"
+Issues = "https://github.com/JulesOpp/Phase-Tiles/issues"
 
 [project.optional-dependencies]
 # Same upper bound as Crystal Builder (its pyproject says why); lift

@@ -17,6 +17,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 ICONS = HERE / "icons"
 NAME = "Phase Tiles"
+COPYRIGHT = "Copyright (c) 2026 Jules Oppenheim, MIT License"
 
 # spawn workers import these by name; PyInstaller's analysis cannot
 # see a pickled function's module.
@@ -39,6 +40,39 @@ def project_datas():
         dest = (Path("phasetiles/data") / name).parent.as_posix()
         out.append((str(src), dest))
     out.append((str(data / "PROVENANCE.md"), "phasetiles/data"))
+    return out
+
+
+# Their licences must travel with their code (BSD notice clauses,
+# LGPL for Qt).  PySide6 wheels carry no licence file, so its texts
+# are in packaging/licenses/.
+NOTICE_PACKAGES = ["numpy", "scipy"]
+
+
+def licence_datas():
+    """(src, dest) pairs for licenses/ in the bundle: ours, the
+    notices index, Qt's LGPL/GPL, CPython's and each wheel's own."""
+    import sys  # noqa: PLC0415
+    from importlib.metadata import distribution  # noqa: PLC0415
+    lic = HERE / "licenses"
+    out = [(str(ROOT / "LICENSE"), "licenses"),
+           (str(lic / "THIRD-PARTY-NOTICES.txt"), "licenses"),
+           (str(lic / "LGPL-3.0.txt"), "licenses/qt"),
+           (str(lic / "GPL-3.0.txt"), "licenses/qt")]
+    base = Path(sys.base_prefix)
+    for p in (base / "LICENSE.txt",
+              base / "lib" / f"python{sys.version_info.major}."
+              f"{sys.version_info.minor}" / "LICENSE.txt"):
+        if p.is_file():
+            out.append((str(p), "licenses/python"))
+            break
+    for pkg in NOTICE_PACKAGES:
+        dist = distribution(pkg)
+        for f in dist.files or []:
+            if any(k in f.name.upper()
+                   for k in ("LICENSE", "COPYING", "NOTICE")):
+                rel = Path(f).parent.as_posix()
+                out.append((str(f.locate()), f"licenses/{pkg}/{rel}"))
     return out
 
 

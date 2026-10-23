@@ -28,12 +28,14 @@ version_info = VSVersionInfo(
               StringStruct("FileDescription",
                            "Tiled Ising phase diagrams on 2D nets"),
               StringStruct("FileVersion", bundle.version()),
+              StringStruct("LegalCopyright", bundle.COPYRIGHT),
               StringStruct("ProductName", "Phase Tiles"),
               StringStruct("ProductVersion", bundle.version())])]),
           VarFileInfo([VarStruct("Translation", [1033, 1200])])])
 
 a = Analysis([str(bundle.ROOT / "phasetilesapp" / "main.py")],
-             pathex=[str(bundle.ROOT)], datas=bundle.project_datas(),
+             pathex=[str(bundle.ROOT)],
+             datas=bundle.project_datas() + bundle.licence_datas(),
              hiddenimports=bundle.HIDDEN_IMPORTS,
              excludes=bundle.EXCLUDES)
 pyz = PYZ(a.pure)

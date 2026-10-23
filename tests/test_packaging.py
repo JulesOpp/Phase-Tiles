@@ -36,3 +36,16 @@ def test_nothing_in_data_is_unlisted():
 
 def test_bundle_never_collects_matplotlib_or_tests():
     assert {"matplotlib", "tkinter", "pytest"} <= set(bundle.EXCLUDES)
+
+
+def test_the_bundle_carries_every_licence_its_contents_need():
+    datas = bundle.licence_datas()
+    for src, _ in datas:
+        assert pathlib.Path(src).is_file(), src
+    names = {(pathlib.Path(s).name, d.split("/")[1] if "/" in d else "")
+             for s, d in datas}
+    assert ("LICENSE", "") in names
+    assert ("THIRD-PARTY-NOTICES.txt", "") in names
+    assert ("LGPL-3.0.txt", "qt") in names
+    for pkg in bundle.NOTICE_PACKAGES:
+        assert any(d.startswith(f"licenses/{pkg}") for _, d in datas), pkg
