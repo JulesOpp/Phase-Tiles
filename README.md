@@ -108,6 +108,17 @@ creates a draft release with the installers attached.
 
 Phase Tiles is released under the [MIT License](LICENSE).
 
+The idea comes from Simonov *et al.*, who ran this kind of
+calculation for vacancy networks: Monte Carlo over a grid of
+interaction parameters, with each point's diffuse scattering read
+as a map of the phases:
+
+> A. Simonov, T. De Baerdemaeker, H. L. B. Boström, M. L. Ríos
+> Gómez, H. J. Gray, D. Chernyshov, A. Bosak, H.-B. Bürgi and
+> A. L. Goodwin, "Hidden diversity of vacancy networks in Prussian
+> blue analogues", *Nature* **578**, 256–260 (2020).
+> [doi:10.1038/s41586-020-1980-y](https://doi.org/10.1038/s41586-020-1980-y)
+
 The net data is a 2D extract of the Reticular Chemistry Structure
 Resource ([rcsr.net](http://rcsr.net); see
 [PROVENANCE.md](phasetiles/data/PROVENANCE.md)). If you use it,
