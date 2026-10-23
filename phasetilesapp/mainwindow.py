@@ -201,14 +201,25 @@ class MainWindow(QMainWindow):
     def save(self):
         if self.doc.path is None:
             return self.save_as_dialog()
-        self.doc.save()
+        self._save(self.doc.path)
 
     def save_as_dialog(self):
         p, _ = QFileDialog.getSaveFileName(
             self, "Save As", "diagram.phtiles",
             "Phase Tiles (*.phtiles)")
         if p:
+            self._save(p)
+
+    def _save(self, p):
+        # like open_dialog: a slot's exception reaches only stderr, so
+        # a read-only folder looked like a save that worked
+        old = self.doc.path
+        try:
             self.doc.save(p)
+        except OSError as e:
+            self.doc.path = old
+            self.statusBar().showMessage(
+                f"Could not save {Path(p).name}: {e}")
 
     def export_dialog(self):
         from phasetilesapp.export import export_image
@@ -216,7 +227,12 @@ class MainWindow(QMainWindow):
             self, "Export Image", "diagram.png",
             "PNG (*.png);;SVG (*.svg);;JPEG (*.jpg)")
         if p:
-            export_image(self.doc, p)
+            try:
+                export_image(self.doc, p)
+            except OSError as e:
+                self.statusBar().showMessage(
+                    f"Could not export {Path(p).name}: {e}")
+                return
             self.statusBar().showMessage(f"Exported {p}", 6000)
 
     def preferences(self):

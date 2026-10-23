@@ -54,7 +54,17 @@ class Hamiltonian:
 
     @classmethod
     def from_dict(cls, d):
-        return cls(d["model"], tuple(Term(k, s) for k, s in d["terms"]))
+        """ValueError for a model or term this build does not offer:
+        a project from elsewhere otherwise opened and then broke every
+        widget (KeyError on the term's label)."""
+        if d["model"] not in MODELS:
+            raise ValueError(f"unknown model '{d['model']}'")
+        terms = tuple(Term(k, s) for k, s in d["terms"])
+        for t in terms:
+            if t not in MODELS[d["model"]]:
+                raise ValueError(f"model '{d['model']}' has no term "
+                                 f"{t.kind} {t.shell}")
+        return cls(d["model"], terms)
 
 
 def default():

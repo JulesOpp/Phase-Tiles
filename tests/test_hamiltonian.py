@@ -28,3 +28,12 @@ def test_round_trips_through_a_dict():
 def test_nshell_counts_up_to_the_highest_shell_even_with_gaps():
     h = Hamiltonian(terms=(Term("pair", 1), Term("pair", 3)))
     assert h.nshell() == 3
+
+
+def test_a_term_the_model_does_not_offer_is_refused():
+    import pytest
+    for d in ({"model": "ising", "terms": [["pair", 7]]},
+              {"model": "ising", "terms": [["spin", 1]]},
+              {"model": "potts", "terms": [["pair", 1]]}):
+        with pytest.raises(ValueError):
+            Hamiltonian.from_dict(d)

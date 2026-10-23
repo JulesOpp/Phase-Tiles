@@ -141,3 +141,41 @@ def test_clear_cache_is_disabled_during_a_run(window):
     w.running = True
     dlg = PreferencesDialog(w.settings, w.doc, w)
     assert not dlg.clear_cache.isEnabled()
+
+
+def _save_to(monkeypatch, path):
+    monkeypatch.setattr(QFileDialog, "getSaveFileName",
+                        staticmethod(lambda *a, **k: (str(path), "")))
+
+
+def test_a_save_that_fails_says_so_and_stays_modified(window, tmp_path,
+                                                     monkeypatch):
+    w = window()
+    w.doc.set_spec(w.doc.spec.replace(x=Axis("J1", -1, 1, 0.5)), "x")
+    _save_to(monkeypatch, tmp_path / "no-such-dir" / "a.phtiles")
+    w.save_as_dialog()
+    assert "a.phtiles" in w.statusBar().currentMessage()
+    assert w.doc.modified and w.doc.path is None
+
+
+def test_an_export_that_fails_says_so(window, tmp_path, monkeypatch):
+    w = window()
+    _save_to(monkeypatch, tmp_path / "no-such-dir" / "a.png")
+    w.export_dialog()
+    assert "a.png" in w.statusBar().currentMessage()
+    assert "Exported" not in w.statusBar().currentMessage()
+
+
+def test_a_project_with_an_unknown_term_is_refused(window, tmp_path,
+                                                   monkeypatch):
+    import json
+    w = window()
+    before = w.doc.spec
+    d = json.loads(before.to_json())
+    d["hamiltonian"]["terms"].append(["pair", 7])
+    p = tmp_path / "j7.phtiles"
+    with zipfile.ZipFile(p, "w") as z:
+        z.writestr("spec.json", json.dumps(d))
+    _open(w, monkeypatch, p)
+    assert w.doc.spec == before
+    assert "j7.phtiles" in w.statusBar().currentMessage()

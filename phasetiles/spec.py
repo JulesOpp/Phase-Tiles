@@ -27,9 +27,11 @@ class Axis:
     step: float
 
     def count(self):
-        """0 for a step <= 0 or a reversed range (validate() says why);
+        """0 for a step <= 0, a reversed range or a NaN/inf (validate()
+        says why);
         never a ZeroDivisionError from whoever asks first."""
-        if not self.step > 0 or self.stop < self.start:
+        if (not np.isfinite([self.start, self.stop, self.step]).all()
+                or not self.step > 0 or self.stop < self.start):
             return 0
         return int(np.floor((self.stop - self.start) / self.step
                             + 1e-6)) + 1
@@ -93,16 +95,25 @@ class DiagramSpec:
     def validate(self):
         errors, warnings = [], []
         syms = self.hamiltonian.symbols()
+        # the cap comes before any values(): J1=-1:1:1e-9 once built a
+        # 16 GB array just to warn that the steps miss the stop
+        over = self.x.count() * self.y.count() > MAX_TILES
         for ax in (self.x, self.y):
             if ax.symbol not in syms:
                 errors.append(f"{ax.symbol} is not a term of this "
                               "Hamiltonian; tick it in the term table.")
+            if not np.isfinite([ax.start, ax.stop, ax.step]).all():
+                errors.append(f"{ax.symbol}: start, stop and step must "
+                              "be numbers.")
+                continue
             if ax.step <= 0:
                 errors.append(f"{ax.symbol} step must be > 0.")
                 continue
             if ax.stop < ax.start:
                 errors.append(f"{ax.symbol}: start {ax.start:g} is "
                               f"above stop {ax.stop:g}.")
+                continue
+            if over:
                 continue
             last = ax.values()[-1]
             if abs(last - ax.stop) > 1e-6 * max(1, abs(ax.stop)):
@@ -116,6 +127,16 @@ class DiagramSpec:
             errors.append("Both axes are on the same parameter.")
         if self.fixed_dict().get("T", 1.0) <= 0:
             errors.append("T must be > 0.")
+        # zero equil/snaps once ended a run in ZeroDivisionError
+        mc = self.mc
+        if mc.n is not None and mc.n < 0:
+            errors.append("Supercell n must be >= 0 (0 = automatic).")
+        if mc.anneal < 0:
+            errors.append("anneal steps must be >= 0.")
+        if mc.equil < 1:
+            errors.append("equil steps must be >= 1.")
+        if mc.snaps < 1:
+            errors.append("snaps must be >= 1.")
         if not errors:
             n = self.x.count() * self.y.count()
             if n > MAX_TILES:

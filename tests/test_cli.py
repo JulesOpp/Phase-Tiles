@@ -23,3 +23,15 @@ def test_run_computes_tiles_into_the_cache(capsys):
                      "12", "--anneal", "50", "--equil", "50",
                      "--snaps", "1", "--workers", "1"]) == 0
     assert "2 tiles computed" in capsys.readouterr().out
+
+
+def test_a_malformed_vary_exits_with_a_sentence(capsys):
+    assert cli.main(["run", "--vary", "J1=a", "--vary",
+                     "J2=0:1:1"]) == 2
+    assert "J1=a" in capsys.readouterr().err
+
+
+def test_zero_equilibration_steps_exit_with_a_sentence(capsys):
+    assert cli.main(["run", "--vary", "J1=0:1:1", "--vary",
+                     "J2=0:0:1", "--fix", "T=1", "--equil", "0"]) == 2
+    assert "equil" in capsys.readouterr().err

@@ -73,3 +73,30 @@ def test_default_supercell_is_about_48_over_root_nsub_in_twelves():
     s = default_spec()
     assert s.n_cells(1) == 48 and s.n_cells(3) == 24
     assert s.n_cells(24) == 12
+
+
+def test_mc_settings_that_cannot_run_are_errors():
+    from phasetiles.spec import MCSettings
+    for mc in (MCSettings(equil=0), MCSettings(snaps=0),
+               MCSettings(anneal=-1), MCSettings(n=-12)):
+        errors, _ = default_spec().replace(mc=mc).validate()
+        assert errors, mc
+
+
+def test_a_huge_range_is_refused_before_its_values_are_made(
+        monkeypatch):
+    # J1=-1:1:1e-9 once allocated ~16 GB just to warn about the stop
+    def refuse(self):
+        raise AssertionError("values() built for an over-cap axis")
+    monkeypatch.setattr(Axis, "values", refuse)
+    s = default_spec().replace(x=Axis("J1", -1, 1, 1e-9))
+    errors, _ = s.validate()
+    assert any("more than" in e for e in errors)
+
+
+def test_non_finite_axis_numbers_are_errors():
+    for x in (Axis("J1", -1, float("inf"), 0.1),
+              Axis("J1", float("nan"), 1, 0.1),
+              Axis("J1", -1, 1, float("nan"))):
+        errors, _ = default_spec().replace(x=x).validate()
+        assert errors, x

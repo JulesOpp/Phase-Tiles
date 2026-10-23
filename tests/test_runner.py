@@ -34,3 +34,17 @@ def test_process_pool_gives_the_same_tiles(tmp_path):
     runner.run_tiles(s, b, 1)
     p = s.params_at(-1.0, 0.0)
     assert (a.get(s, p).snap == b.get(s, p).snap).all()
+
+
+@pytest.mark.slow
+def test_stop_interrupts_tiles_already_in_a_worker(tmp_path):
+    # without it a stopped run (or closing the window) waited for every
+    # running tile to finish -- minutes on a large n
+    import time
+    s = _tiny().replace(mc=MCSettings(n=12, anneal=10**7, equil=10,
+                                      snaps=1))
+    st, t0 = ResultStore(tmp_path), time.monotonic()
+    n = runner.run_tiles(s, st, 2,
+                         should_stop=lambda: time.monotonic() - t0 > 4)
+    assert n == 0 and time.monotonic() - t0 < 20
+    assert len(runner.jobs_for(s, st)) == 2

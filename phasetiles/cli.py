@@ -17,16 +17,26 @@ from phasetiles.store import ResultStore
 
 
 def _spec(a):
+    """ValueError naming the argument it could not read: a traceback
+    is no answer to a typo on the command line."""
     axes = []
     for v in a.vary:
-        k, r = v.split("=")
-        lo, hi, st = (float(t) for t in r.split(":"))
+        try:
+            k, r = v.split("=")
+            lo, hi, st = (float(t) for t in r.split(":"))
+        except ValueError:
+            raise ValueError(f"--vary {v}: expected "
+                             "NAME=start:stop:step") from None
         axes.append(Axis(k, lo, hi, st))
     fixed = []
     for f in a.fix:
         for kv in f.split(","):
-            k, v = kv.split("=")
-            fixed.append((k, float(v)))
+            try:
+                k, v = kv.split("=")
+                fixed.append((k, float(v)))
+            except ValueError:
+                raise ValueError(f"--fix {kv}: expected "
+                                 "NAME=value") from None
     used = ({ax.symbol for ax in axes}
             | {k for k, v in fixed if v != 0 and k != "T"})
     terms = tuple(t for t in MODELS[a.ham] if t.symbol in used)
@@ -63,7 +73,11 @@ def main(argv=None):
     if len(a.vary) != 2:
         print("give two --vary NAME=start:stop:step", file=sys.stderr)
         return 2
-    spec = _spec(a)
+    try:
+        spec = _spec(a)
+    except ValueError as e:
+        print(e, file=sys.stderr)
+        return 2
     errors, warnings = spec.validate()
     for w in warnings:
         print("warning:", w, file=sys.stderr)

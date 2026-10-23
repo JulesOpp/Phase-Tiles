@@ -27,6 +27,18 @@ class Job:
 
 
 _LAT = {}
+_STOP = None          # the pool's stop Event, in each worker
+
+
+def _init_worker(stop):
+    global _STOP
+    _STOP = stop
+
+
+def _pool_tile(job):
+    # the worker's own copy of the stop flag: without it a stopped
+    # run (or closing the window) waited for every running tile
+    return compute_tile(job, _STOP.is_set)
 
 
 def _lattice(net, n, nshell):
@@ -90,9 +102,12 @@ def run_tiles(spec, store, workers=2, on_tile=None, should_stop=None):
         return _serial(spec, store, jobs, on_tile, stop)
     done = 0
     it = iter(jobs)
-    ex = ProcessPoolExecutor(workers, mp_context=mp.get_context("spawn"))
+    ctx = mp.get_context("spawn")
+    halt = ctx.Event()
+    ex = ProcessPoolExecutor(workers, mp_context=ctx,
+                             initializer=_init_worker, initargs=(halt,))
     try:
-        pending = {ex.submit(compute_tile, j)
+        pending = {ex.submit(_pool_tile, j)
                    for _, j in zip(range(2 * workers), it, strict=False)}
         while pending and not stop():
             fin, pending = wait(pending, timeout=0.5,
@@ -105,7 +120,8 @@ def run_tiles(spec, store, workers=2, on_tile=None, should_stop=None):
                     on_tile(r)
                 nxt = next(it, None)
                 if nxt is not None:
-                    pending.add(ex.submit(compute_tile, nxt))
+                    pending.add(ex.submit(_pool_tile, nxt))
     finally:
+        halt.set()      # running tiles raise Cancelled; none is stored
         ex.shutdown(wait=True, cancel_futures=True)
     return done
