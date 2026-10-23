@@ -4,10 +4,13 @@ A project carries its results so a diagram that took an hour opens
 instantly on another machine; loading unpacks the tiles into the
 working cache, where the store finds them by key as usual.
 """
+import re
 import zipfile
 from pathlib import Path, PurePosixPath
 
 from phasetiles.spec import DiagramSpec
+
+_TILE = re.compile(r"tiles/[0-9a-f]{16}/[0-9a-f]{16}\.npz")
 
 
 def save_project(path, spec, store):
@@ -24,10 +27,11 @@ def load_project(path, store):
     with zipfile.ZipFile(path) as z:
         spec = DiagramSpec.from_json(z.read("spec.json").decode())
         for name in z.namelist():
-            p = PurePosixPath(name)
-            # only tiles/<key>/<file>.npz; never a path that escapes
-            if (len(p.parts) == 3 and p.parts[0] == "tiles"
-                    and p.suffix == ".npz" and ".." not in p.parts):
+            # only tiles/<key>/<key>.npz, exactly as the store names
+            # them: a '..' check alone lets '..\' and 'C:\' through,
+            # which Windows reads as a path out of the cache
+            if _TILE.fullmatch(name):
+                p = PurePosixPath(name)
                 dest = store.root / p.parts[1] / p.parts[2]
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 dest.write_bytes(z.read(name))

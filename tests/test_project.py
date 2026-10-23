@@ -25,3 +25,21 @@ def test_a_project_cannot_write_outside_the_cache(tmp_path):
     st = ResultStore(tmp_path / "cache" / "inner")
     project.load_project(f, st)
     assert not list(tmp_path.rglob("escaped*.npz"))
+
+
+def test_a_project_tile_name_is_only_a_store_key(tmp_path):
+    # backslashes and drive letters are plain characters on POSIX
+    # but a path on Windows: only names the store itself writes pass
+    import zipfile
+    f = tmp_path / "evil.phtiles"
+    k = "0123456789abcdef"
+    with zipfile.ZipFile(f, "w") as z:
+        z.writestr("spec.json", default_spec().to_json())
+        z.writestr(f"tiles/{k}/..\\..\\..\\escaped.npz", b"x")
+        z.writestr("tiles/C:\\Users\\Public/escaped.npz", b"x")
+        z.writestr(f"tiles/{k}/{k}.npz", b"x")
+    st = ResultStore(tmp_path / "cache")
+    project.load_project(f, st)
+    got = [p.relative_to(st.root).as_posix()
+           for p in st.root.rglob("*") if p.is_file()]
+    assert got == [f"{k}/{k}.npz"]
